@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protardio Mini App</title>
+    
+    <!-- Farcaster Mini App Embed Meta Tag -->
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"file:///C:/Users/User/Downloads/protardios/500.png","button":{"title":"🎲 View Random Protardio","action":{"type":"launch_frame","name":"Protardio Gallery","url":"file:///C:/Users/User/Desktop/protardio-app.html","splashImageUrl":"file:///C:/Users/User/Downloads/protardios/100.png","splashBackgroundColor":"#FFD700"}}}' />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2C1810;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .app-title {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #8B4513, #D2691E);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 30px;
+            color: #8B4513;
+            font-weight: 500;
+        }
+
+        .debug-info {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 12px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-size: 0.8rem;
+            color: #8B4513;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        .image-container {
+            width: 100%;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+        }
+
+        .protardio-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 15px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+        }
+
+        .placeholder {
+            font-size: 4rem;
+            opacity: 0.4;
+            color: #8B4513;
+        }
+
+        .action-button {
+            background: linear-gradient(45deg, #FF6347, #FF4500);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(255, 99, 71, 0.4);
+            margin: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .action-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 99, 71, 0.6);
+            background: linear-gradient(45deg, #FF4500, #FF6347);
+        }
+
+        .action-button:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none;
+            color: #8B4513;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .share-button {
+            background: linear-gradient(45deg, #32CD32, #228B22);
+            box-shadow: 0 6px 20px rgba(50, 205, 50, 0.4);
+        }
+
+        .share-button:hover {
+            background: linear-gradient(45deg, #228B22, #32CD32);
+            box-shadow: 0 8px 25px rgba(50, 205, 50, 0.6);
+        }
+
+        .status-message {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 18px;
+            border-radius: 15px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+            color: #8B4513;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        .cooldown-timer {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #B22222;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading .placeholder {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes slideIn {
+            from { 
+                transform: scale(0.8) rotate(-5deg); 
+                opacity: 0; 
+            }
+            to { 
+                transform: scale(1) rotate(0deg); 
+                opacity: 1; 
+            }
+        }
+
+        .protardio-image {
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .reset-button {
+            background: linear-gradient(45deg, #DAA520, #B8860B);
+            box-shadow: 0 6px 20px rgba(218, 165, 32, 0.4);
+        }
+
+        .reset-button:hover {
+            background: linear-gradient(45deg, #B8860B, #DAA520);
+            box-shadow: 0 8px 25px rgba(218, 165, 32, 0.6);
+        }
+
+        .protardio-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            color: #8B4513;
+            font-weight: 600;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: calc(200px + 100%) 0; }
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            background-size: 200px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="app-title">🎭 Protardio Gallery</h1>
+        <p class="subtitle">Discover random Protardios from the ultimate collection!</p>
+        
+        <div class="protardio-badge">
+            🖼️ 2000 Unique Protardios Available
+        </div>
+        
+        <div class="debug-info" id="debugInfo">
+            🔧 Local Testing Mode<br>
+            Ready to explore the Protardio universe!
+        </div>
+        
+        <div class="image-container" id="imageContainer">
+            <div class="placeholder">🎭</div>
+        </div>
+        
+        <div class="status-message" id="statusMessage" style="display: none;"></div>
+        
+        <button class="action-button" id="viewImageBtn" onclick="viewRandomProtardio()">
+            🎲 View Random Protardio
+        </button>
+        
+        <button class="action-button share-button" id="shareBtn" onclick="shareApp()" style="display: none;">
+            📤 Share to Reset Timer
+        </button>
+        
+        <button class="action-button reset-button" onclick="resetForTesting()">
+            🔄 Reset for Testing
+        </button>
+    </div>
+
+    <script>
+        let lastViewTime = null;
+        let currentImageIndex = null;
+        const COOLDOWN_HOURS = 1;
+        const TOTAL_IMAGES = 2000;
+        const PROTARDIO_PATH = 'C:/Users/User/Downloads/protardios/';
+        
+        // Mock Farcaster SDK for local testing
+        const mockSdk = {
+            context: {
+                user: { fid: 12345, username: "protardio_fan" },
+                client: { clientFid: 9152, added: false }
+            },
+            actions: {
+                ready: async () => console.log("Mock: App ready"),
+                composeCast: async (options) => {
+                    console.log("Mock: Compose cast:", options);
+                    alert("Mock: Cast composed! " + options.text);
+                    return { hash: "0x123" };
+                }
+            }
+        };
+        
+        // Initialize the app
+        async function initApp() {
+            console.log('Protardio Gallery initialized');
+            
+            // Check for last view time
+            const stored = localStorage.getItem('lastProtardioView');
+            if (stored) {
+                lastViewTime = new Date(stored);
+                checkCooldownStatus();
+            }
+            
+            // Update debug info
+            updateDebugInfo();
+        }
+        
+        function updateDebugInfo() {
+            document.getElementById('debugInfo').innerHTML = `
+                🎭 Protardio Gallery Mode<br>
+                Last View: ${lastViewTime ? lastViewTime.toLocaleTimeString() : 'Never'}<br>
+                Collection: ${TOTAL_IMAGES} Protardios<br>
+                Current: ${currentImageIndex ? `#${currentImageIndex}` : 'None'}
+            `;
+        }
+        
+        // Generate protardio image path
+        function generateProtardioPath(index) {
+            // Randomly choose between regular and _b2 variant
+            const useB2Variant = Math.random() < 0.5;
+            const filename = useB2Variant ? `${index}_b2.png` : `${index}.png`;
+            // Use nested path for protardios folder inside protardios folder
+            return `../protardios/protardios/${filename}`;
+        }
+        
+        // Check if user is in cooldown period
+        function checkCooldownStatus() {
+            if (!lastViewTime) return false;
+            
+            const now = new Date();
+            const timeDiff = now - lastViewTime;
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
+            
+            if (hoursDiff < COOLDOWN_HOURS) {
+                showCooldownMessage(COOLDOWN_HOURS - hoursDiff);
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Show cooldown message
+        function showCooldownMessage(hoursRemaining) {
+            const minutes = Math.ceil(hoursRemaining * 60);
+            const statusEl = document.getElementById('statusMessage');
+            const viewBtn = document.getElementById('viewImageBtn');
+            const shareBtn = document.getElementById('shareBtn');
+            
+            statusEl.innerHTML = `
+                <div class="cooldown-timer">⏱️ Cooldown Active</div>
+                <p>You can view another Protardio in <strong>${minutes} minutes</strong></p>
+                <p>Or share the app to reset your timer!</p>
+            `;
+            statusEl.style.display = 'block';
+            
+            viewBtn.disabled = true;
+            viewBtn.textContent = '⏱️ Cooldown Active';
+            shareBtn.style.display = 'inline-block';
+        }
+        
+        // View random protardio
+        window.viewRandomProtardio = async function() {
+            if (checkCooldownStatus()) return;
+            
+            const container = document.getElementById('imageContainer');
+            const viewBtn = document.getElementById('viewImageBtn');
+            const statusEl = document.getElementById('statusMessage');
+            
+            // Show loading state
+            container.classList.add('loading', 'shimmer');
+            viewBtn.disabled = true;
+            viewBtn.textContent = '🎲 Loading Protardio...';
+            
+            // Simulate loading delay for realism
+            setTimeout(() => {
+                try {
+                    // Generate random protardio index (0-999)
+                    currentImageIndex = Math.floor(Math.random() * 1000);
+                    const imagePath = generateProtardioPath(currentImageIndex);
+                    const isB2Variant = imagePath.includes('_b2');
+                    
+                    console.log(`Loading Protardio #${currentImageIndex}${isB2Variant ? ' (B2 Variant)' : ''}: ${imagePath}`);
+                    
+                    // Create image element
+                    const img = new Image();
+                    img.onload = function() {
+                        container.innerHTML = '';
+                        img.className = 'protardio-image';
+                        container.appendChild(img);
+                        
+                        // Update state
+                        lastViewTime = new Date();
+                        localStorage.setItem('lastProtardioView', lastViewTime.toISOString());
+                        
+                        // Show success message
+                        statusEl.innerHTML = `
+                            <div>🎉 <strong>Protardio #${currentImageIndex}</strong> ${isB2Variant ? '(B2 Variant)' : ''} revealed!</div>
+                            <p>A unique member of the Protardio collection! 🎭</p>
+                            <p>Come back in 1 hour for another random Protardio, or share to reset!</p>
+                        `;
+                        statusEl.style.display = 'block';
+                        
+                        // Update buttons
+                        checkCooldownStatus();
+                        
+                        container.classList.remove('loading', 'shimmer');
+                        updateDebugInfo();
+                    };
+                    
+                    img.onerror = function() {
+                        console.error(`Failed to load Protardio image: ${imagePath}`);
+                        container.classList.remove('loading', 'shimmer');
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 20px; color: #8B4513;">
+                                <div style="font-size: 3rem;">🚫</div>
+                                <div>Failed to load Protardio #${currentImageIndex}</div>
+                                <div style="font-size: 0.8rem; opacity: 0.7; margin-top: 5px;">Check file path and permissions</div>
+                            </div>
+                        `;
+                        
+                        statusEl.innerHTML = `
+                            <div>❌ <strong>Load Failed</strong></div>
+                            <p>Could not load Protardio #${currentImageIndex}. Try again?</p>
+                            <p style="font-size: 0.8rem; opacity: 0.7;">Make sure the protardios folder is accessible</p>
+                        `;
+                        statusEl.style.display = 'block';
+                        
+                        viewBtn.disabled = false;
+                        viewBtn.textContent = '🎲 Try Again';
+                    };
+                    
+                    img.src = imagePath;
+                    
+                } catch (error) {
+                    console.error('Failed to generate Protardio:', error);
+                    container.classList.remove('loading', 'shimmer');
+                    container.innerHTML = '<div class="placeholder">❌</div>';
+                    
+                    statusEl.textContent = 'Failed to generate Protardio. Please try again.';
+                    statusEl.style.display = 'block';
+                    
+                    viewBtn.disabled = false;
+                    viewBtn.textContent = '🎲 Try Again';
+                }
+            }, 800); // Longer delay for dramatic effect
+        };
+        
+        // Mock share function
+        window.shareApp = async function() {
+            try {
+                const shareBtn = document.getElementById('shareBtn');
+                shareBtn.disabled = true;
+                shareBtn.textContent = '📤 Sharing...';
+                
+                // Use mock SDK
+                await mockSdk.actions.composeCast({
+                    text: `Just discovered Protardio #${currentImageIndex || '???'} in this amazing collection! 🎭✨ Check out the Protardio Gallery!`,
+                    embeds: [window.location.href]
+                });
+                
+                // Reset cooldown
+                resetTimer();
+                
+            } catch (error) {
+                console.error('Failed to share:', error);
+                const shareBtn = document.getElementById('shareBtn');
+                shareBtn.disabled = false;
+                shareBtn.textContent = '📤 Share to Reset Timer';
+            }
+        };
+        
+        // Reset timer function
+        function resetTimer() {
+            localStorage.removeItem('lastProtardioView');
+            lastViewTime = null;
+            
+            // Update UI
+            const statusEl = document.getElementById('statusMessage');
+            const viewBtn = document.getElementById('viewImageBtn');
+            const shareBtn = document.getElementById('shareBtn');
+            
+            statusEl.innerHTML = `
+                <div>🎉 <strong>Timer Reset!</strong></div>
+                <p>You can now view another Protardio.</p>
+            `;
+            
+            viewBtn.disabled = false;
+            viewBtn.textContent = '🎲 View Random Protardio';
+            shareBtn.style.display = 'none';
+            
+            updateDebugInfo();
+        }
+        
+        // Reset for testing
+        window.resetForTesting = function() {
+            resetTimer();
+            document.getElementById('imageContainer').innerHTML = '<div class="placeholder">🎭</div>';
+            document.getElementById('statusMessage').style.display = 'none';
+            currentImageIndex = null;
+            updateDebugInfo();
+        };
+        
+        // Initialize when page loads
+        initApp();
+    </script>
+</body>
+</html>
