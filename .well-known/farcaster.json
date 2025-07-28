@@ -3,8 +3,7 @@
     "header": "eyJmaWQiOjE2ODYzLCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4NjJGNUNFZTdBRTlhOTlBNjM3ZTg0M0Q5MjEzN2Q1ODRmMkE4MTA4MSJ9",
     "payload": "eyJkb21haW4iOiJwcm90YXJkaW8tbWluaS1hcHAudmVyY2VsLmFwcCJ9",
     "signature": "MHg2YjMxNGVlOThhMTUxN2E0OTIyMTRjNzNlNzNiYjI3YTA3ZGFkNzE0NmMxMWEwNTg2OGM0Nzc3NTQ4YTIwNmRlNjM0OTcxMWU3ZDJkOTU3ZTgwNGYwNjA2M2EwZTZhYjZiYTJlZDY4ZDM5MWExMTdmYTk3YTkzYTI0YmQzOTE0ODFj"
-  }
-},
+  },
   "frame": {
     "version": "1",
     "name": "Protardio Gallery",
