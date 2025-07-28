@@ -16,8 +16,6 @@
         }
 
         body {
-
-        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
             min-height: 100vh;
@@ -209,7 +207,6 @@
             background-size: 200px 100%;
             animation: shimmer 2s infinite;
         }
-    }
     </style>
 </head>
 <body>
@@ -246,12 +243,11 @@
     </div>
 
     <script>
+        // Global variables
         let lastViewTime = null;
         let currentImageIndex = null;
         const COOLDOWN_HOURS = 1;
         const TOTAL_IMAGES = 2000;
-        
-        // Real Farcaster SDK for production, mock for local testing
         let sdk;
         
         // Mock Farcaster SDK for local testing
@@ -270,11 +266,9 @@
             }
         };
         
-        // Check if we're in Farcaster environment
+        // SDK initialization
         if (typeof window !== 'undefined' && window.parent !== window) {
-            // We're likely in an iframe (Farcaster environment)
             try {
-                // Try to import the real Farcaster SDK
                 import('https://esm.sh/@farcaster/frame-sdk').then(module => {
                     sdk = module.sdk;
                     initApp();
@@ -289,7 +283,6 @@
                 initApp();
             }
         } else {
-            // Local testing environment
             console.log('Local environment detected, using mock SDK');
             sdk = mockSdk;
             initApp();
@@ -299,7 +292,6 @@
         async function initApp() {
             console.log('Protardio Gallery initialized');
             
-            // Call ready to hide splash screen (important for Farcaster!)
             try {
                 await sdk.actions.ready();
                 console.log('✅ SDK ready called successfully');
@@ -307,17 +299,16 @@
                 console.log('⚠️ Ready call failed:', error);
             }
             
-            // Check for last view time
             const stored = localStorage.getItem('lastProtardioView');
             if (stored) {
                 lastViewTime = new Date(stored);
                 checkCooldownStatus();
             }
             
-            // Update debug info
             updateDebugInfo();
         }
         
+        // Update debug info display
         function updateDebugInfo() {
             const debugEl = document.getElementById('debugInfo');
             if (debugEl) {
@@ -331,7 +322,7 @@
         }
         
         // Update frame meta tag with current protardio
-        function updateFrameMetaTag(protardioIndex, isB2Variant = false) {
+        function updateFrameMetaTag(protardioIndex, isB2Variant) {
             const variant = isB2Variant ? '_b2' : '';
             const imageUrl = `https://protardio-mini-app.vercel.app/protardios/protardios/${protardioIndex}${variant}.png`;
             
@@ -350,7 +341,6 @@
                 }
             };
             
-            // Update or create the meta tag
             let metaTag = document.querySelector('meta[name="fc:frame"]');
             if (!metaTag) {
                 metaTag = document.createElement('meta');
@@ -361,11 +351,14 @@
             metaTag.content = JSON.stringify(frameData);
             console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}${isB2Variant ? ' (B2)' : ''}`);
         }
-            // Randomly choose between regular and _b2 variant
+
+        // Generate protardio image path
+        function generateProtardioPath(index) {
             const useB2Variant = Math.random() < 0.5;
             const filename = useB2Variant ? `${index}_b2.png` : `${index}.png`;
             return `./protardios/protardios/${filename}`;
-            
+        }
+        
         // Check if user is in cooldown period
         function checkCooldownStatus() {
             if (!lastViewTime) return false;
@@ -411,36 +404,29 @@
             const viewBtn = document.getElementById('viewImageBtn');
             const statusEl = document.getElementById('statusMessage');
             
-            // Show loading state
             container.classList.add('loading', 'shimmer');
             viewBtn.disabled = true;
             viewBtn.textContent = '🎲 Loading Protardio...';
             
-            // Simulate loading delay for realism
             setTimeout(() => {
                 try {
-                    // Generate random protardio index (0-999)
                     currentImageIndex = Math.floor(Math.random() * 1000);
                     const imagePath = generateProtardioPath(currentImageIndex);
                     const isB2Variant = imagePath.includes('_b2');
                     
                     console.log(`Loading Protardio #${currentImageIndex}${isB2Variant ? ' (B2 Variant)' : ''}: ${imagePath}`);
                     
-                    // Create image element
                     const img = new Image();
                     img.onload = function() {
                         container.innerHTML = '';
                         img.className = 'protardio-image';
                         container.appendChild(img);
                         
-                        // Update state
                         lastViewTime = new Date();
                         localStorage.setItem('lastProtardioView', lastViewTime.toISOString());
                         
-                        // Update frame meta tag with current protardio for sharing
                         updateFrameMetaTag(currentImageIndex, isB2Variant);
                         
-                        // Show success message
                         statusEl.innerHTML = `
                             <div>🎉 <strong>Protardio #${currentImageIndex}</strong> ${isB2Variant ? '(B2 Variant)' : ''} revealed!</div>
                             <p>A unique member of the Protardio collection! 🎭</p>
@@ -448,7 +434,6 @@
                         `;
                         statusEl.style.display = 'block';
                         
-                        // Update buttons
                         checkCooldownStatus();
                         
                         container.classList.remove('loading', 'shimmer');
@@ -500,13 +485,11 @@
                 shareBtn.disabled = true;
                 shareBtn.textContent = '📤 Sharing...';
                 
-                // Use real SDK for sharing
                 await sdk.actions.composeCast({
                     text: `Pushing 🅿 with preview protardio ${currentImageIndex || '???'}, check it out (or not)\n\nprotardio.`,
                     embeds: [window.location.href]
                 });
                 
-                // Reset cooldown
                 resetTimer();
                 
             } catch (error) {
@@ -522,7 +505,6 @@
             localStorage.removeItem('lastProtardioView');
             lastViewTime = null;
             
-            // Update UI
             const statusEl = document.getElementById('statusMessage');
             const viewBtn = document.getElementById('viewImageBtn');
             const shareBtn = document.getElementById('shareBtn');
@@ -554,9 +536,8 @@
             updateDebugInfo();
         };
         
-        // Initialize when page loads - but wait for SDK
+        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // SDK initialization is handled above, initApp() is called after SDK loads
             console.log('DOM loaded, waiting for SDK...');
         });
     </script>
