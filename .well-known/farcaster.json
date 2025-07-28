@@ -4,37 +4,6 @@
     "payload": "eyJkb21haW4iOiJwcm90YXJkaW8tbWluaS1hcHAudmVyY2VsLmFwcCJ9",
     "signature": "MHg2YjMxNGVlOThhMTUxN2E0OTIyMTRjNzNlNzNiYjI3YTA3ZGFkNzE0NmMxMWEwNTg2OGM0Nzc3NTQ4YTIwNmRlNjM0OTcxMWU3ZDJkOTU3ZTgwNGYwNjA2M2EwZTZhYjZiYTJlZDY4ZDM5MWExMTdmYTk3YTkzYTI0YmQzOTE0ODFj"
   },
-  "miniApp": {
-    "version": "1",
-    "name": "Protardio Gallery",
-    "iconUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/100.png",
-    "homeUrl": "https://protardio-mini-app.vercel.app",
-    "imageUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/500.png",
-    "buttonTitle": "🎲 Open Protardio Gallery",
-    "splashImageUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/250.png",
-    "splashBackgroundColor": "#FFD700",
-    "subtitle": "Discover random Protardios from the ultimate collection",
-    "description": "A beautiful mini app showcasing 2000 unique Protardios from the legendary collection. View one random Protardio per hour, or share to reset your timer! Features sequentially numbered Protardios with a stunning golden theme.",
-    "screenshotUrls": [
-      "https://protardio-mini-app.vercel.app/protardios/protardios/123.png",
-      "https://protardio-mini-app.vercel.app/protardios/protardios/456.png",
-      "https://protardio-mini-app.vercel.app/protardios/protardios/789.png"
-    ],
-    "primaryCategory": "entertainment",
-    "tags": [
-      "protardio",
-      "nft",
-      "collection",
-      "random",
-      "art",
-      "gallery"
-    ],
-    "heroImageUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/777.png",
-    "tagline": "The ultimate Protardio collection gallery",
-    "ogTitle": "Protardio Gallery - Random Collection Viewer",
-    "ogDescription": "Discover random Protardios from the ultimate 2000-piece collection!",
-    "ogImageUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/999.png"
-  },
   "frame": {
     "version": "1",
     "name": "Protardio Gallery",
