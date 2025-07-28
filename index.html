@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protardio Mini App</title>
     
-    <!-- Farcaster Mini App Meta Tags -->
+    <!-- Farcaster Mini App Meta Tags (v2) -->
     <meta property="fc:frame" content="vNext" />
     <meta property="fc:frame:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/500.png" />
-    <meta property="fc:frame:button:1" content="🎲 View Random Protardio" />
+    <meta property="fc:frame:button:1" content="🎲 Open Protardio Gallery" />
     <meta property="fc:frame:button:1:action" content="launch_frame" />
-    <meta property="fc:frame:launch:name" content="Protardio Gallery" />
-    <meta property="fc:frame:launch:url" content="https://protardio-mini-app.vercel.app" />
-    <meta property="fc:frame:launch:splash:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/100.png" />
-    <meta property="fc:frame:launch:splash:background-color" content="#FFD700" />
+    <meta property="fc:frame:button:1:target" content="https://protardio-mini-app.vercel.app" />
+    
+    <!-- Mini App specific tags -->
+    <meta name="fc:frame:miniapp" content='{"version":"1","imageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/500.png","button":{"title":"🎲 Open Protardio Gallery","action":{"type":"launch_frame","name":"Protardio Gallery","url":"https://protardio-mini-app.vercel.app","splashImageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/100.png","splashBackgroundColor":"#FFD700"}}}' />
+    
+    <!-- Fallback frame tags for older clients -->
+    <meta property="fc:frame:post_url" content="https://protardio-mini-app.vercel.app" />
     
     <!-- Open Graph tags for social sharing -->
     <meta property="og:title" content="Protardio Gallery - Random Collection Viewer" />
