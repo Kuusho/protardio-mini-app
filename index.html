@@ -15,6 +15,19 @@
     <meta property="fc:frame:launch:splash:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/100.png" />
     <meta property="fc:frame:launch:splash:background-color" content="#FFD700" />
     
+    <!-- Open Graph tags for social sharing -->
+    <meta property="og:title" content="Protardio Gallery - Random Collection Viewer" />
+    <meta property="og:description" content="Discover random Protardios from the ultimate 2000-piece collection!" />
+    <meta property="og:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/500.png" />
+    <meta property="og:url" content="https://protardio-mini-app.vercel.app" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Twitter Card tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Protardio Gallery" />
+    <meta name="twitter:description" content="Discover random Protardios from the ultimate collection!" />
+    <meta name="twitter:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/500.png" />
+    
     <style>
         * {
             margin: 0;
@@ -276,51 +289,53 @@
             }
         };
         
-        // FIXED: Improved SDK initialization with better error handling
+        // FIXED: Use the correct miniapp-sdk (not frame-sdk)
         async function loadSDK() {
+            console.log('🔄 Starting SDK initialization...');
+            
             if (typeof window !== 'undefined' && window.parent !== window) {
                 try {
-                    // Try to load the SDK from the CDN
-                    console.log('🔄 Loading Farcaster SDK...');
+                    console.log('📡 Farcaster environment detected, loading miniapp SDK...');
                     
+                    // Use the official miniapp-sdk ESM import
                     const script = document.createElement('script');
                     script.type = 'module';
                     script.textContent = `
                         try {
-                            import { sdk } from 'https://esm.sh/@farcaster/frame-sdk';
+                            const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
                             window.farcasterSDK = sdk;
                             window.sdkLoaded = true;
-                            console.log('✅ SDK imported successfully');
+                            console.log('✅ MiniApp SDK imported successfully');
                         } catch (error) {
-                            console.error('❌ SDK import failed:', error);
+                            console.error('❌ MiniApp SDK import failed:', error);
                             window.sdkLoaded = false;
                         }
                     `;
                     document.head.appendChild(script);
                     
-                    // Wait for SDK to load with timeout
+                    // Wait for SDK to load with extended timeout
                     let attempts = 0;
-                    const maxAttempts = 20; // 10 seconds total
+                    const maxAttempts = 40; // 20 seconds total
                     
                     while (attempts < maxAttempts) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        attempts++;
-                        
                         if (window.farcasterSDK && window.sdkLoaded) {
                             sdk = window.farcasterSDK;
-                            console.log('✅ Farcaster SDK loaded successfully');
+                            console.log('✅ Farcaster MiniApp SDK loaded successfully');
                             break;
                         }
                         
-                        console.log(`⏳ Waiting for SDK... (${attempts}/${maxAttempts})`);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        attempts++;
+                        console.log(`⏳ Waiting for MiniApp SDK... (${attempts}/${maxAttempts})`);
                     }
                     
                     if (!window.farcasterSDK || !window.sdkLoaded) {
-                        throw new Error('SDK failed to load within timeout');
+                        throw new Error('MiniApp SDK failed to load within timeout');
                     }
                     
                 } catch (error) {
-                    console.log('⚠️ Failed to load Farcaster SDK, using mock:', error);
+                    console.error('⚠️ Failed to load MiniApp SDK:', error);
+                    console.log('🔄 Falling back to mock SDK...');
                     sdk = mockSdk;
                 }
             } else {
@@ -328,7 +343,7 @@
                 sdk = mockSdk;
             }
             
-            // Always call initApp after SDK setup
+            // Always initialize the app
             await initApp();
         }
         
@@ -339,18 +354,35 @@
             loadSDK();
         }
         
-        // Initialize the app
+        // Initialize the app and call ready
         async function initApp() {
             console.log('🎭 Protardio Gallery initializing...');
             
             try {
-                // Always call ready() regardless of SDK type
+                // Ensure we have a valid SDK
+                if (!sdk || !sdk.actions || typeof sdk.actions.ready !== 'function') {
+                    console.error('❌ SDK not properly loaded, using mock');
+                    sdk = mockSdk;
+                }
+                
+                // Call ready() - this is critical for Farcaster
                 console.log('📞 Calling sdk.actions.ready()...');
-                await sdk.actions.ready();
-                console.log('✅ SDK ready() called successfully');
+                const readyResult = await sdk.actions.ready();
+                console.log('✅ SDK ready() called successfully', readyResult);
+                
+                // Small delay to ensure ready() is processed
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
             } catch (error) {
-                console.error('⚠️ Ready call failed:', error);
-                // Don't let this stop the app from working
+                console.error('❌ Ready call failed:', error);
+                // Try calling ready again as fallback
+                try {
+                    console.log('🔄 Retrying ready() call...');
+                    await sdk.actions.ready();
+                    console.log('✅ Ready() retry successful');
+                } catch (retryError) {
+                    console.error('❌ Ready() retry also failed:', retryError);
+                }
             }
             
             // Load saved state
@@ -361,7 +393,7 @@
             }
             
             updateDebugInfo();
-            console.log('🎉 Protardio Gallery ready!');
+            console.log('🎉 Protardio Gallery initialization complete!');
         }
         
         // Update debug info display
@@ -393,7 +425,30 @@
                 document.head.appendChild(imageMetaTag);
             }
             
+            // Also update Open Graph tags for better social sharing
+            let ogImageTag = document.querySelector('meta[property="og:image"]');
+            if (ogImageTag) {
+                ogImageTag.content = imageUrl;
+            } else {
+                ogImageTag = document.createElement('meta');
+                ogImageTag.setAttribute('property', 'og:image');
+                ogImageTag.content = imageUrl;
+                document.head.appendChild(ogImageTag);
+            }
+            
+            // Update Twitter Card image
+            let twitterImageTag = document.querySelector('meta[name="twitter:image"]');
+            if (twitterImageTag) {
+                twitterImageTag.content = imageUrl;
+            } else {
+                twitterImageTag = document.createElement('meta');
+                twitterImageTag.setAttribute('name', 'twitter:image');
+                twitterImageTag.content = imageUrl;
+                document.head.appendChild(twitterImageTag);
+            }
+            
             console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}`);
+            console.log(`📎 Image URL: ${imageUrl}`);
         }
 
         // Generate protardio image path - simplified for sequential numbering
