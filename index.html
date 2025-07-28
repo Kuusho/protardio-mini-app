@@ -264,7 +264,10 @@
                 client: { clientFid: 9152, added: false }
             },
             actions: {
-                ready: async () => console.log("Mock: App ready"),
+                ready: async () => {
+                    console.log("✅ Mock SDK: ready() called");
+                    return Promise.resolve();
+                },
                 composeCast: async (options) => {
                     console.log("Mock: Compose cast:", options);
                     alert("Mock: Cast composed! " + options.text);
@@ -278,34 +281,55 @@
             if (typeof window !== 'undefined' && window.parent !== window) {
                 try {
                     // Try to load the SDK from the CDN
+                    console.log('🔄 Loading Farcaster SDK...');
+                    
                     const script = document.createElement('script');
                     script.type = 'module';
                     script.textContent = `
-                        import { sdk } from 'https://esm.sh/@farcaster/frame-sdk';
-                        window.farcasterSDK = sdk;
+                        try {
+                            import { sdk } from 'https://esm.sh/@farcaster/frame-sdk';
+                            window.farcasterSDK = sdk;
+                            window.sdkLoaded = true;
+                            console.log('✅ SDK imported successfully');
+                        } catch (error) {
+                            console.error('❌ SDK import failed:', error);
+                            window.sdkLoaded = false;
+                        }
                     `;
                     document.head.appendChild(script);
                     
-                    // Wait a bit for the SDK to load
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Wait for SDK to load with timeout
+                    let attempts = 0;
+                    const maxAttempts = 20; // 10 seconds total
                     
-                    if (window.farcasterSDK) {
-                        sdk = window.farcasterSDK;
-                        console.log('✅ Farcaster SDK loaded successfully');
-                    } else {
-                        console.log('⚠️ SDK not available, using mock');
-                        sdk = mockSdk;
+                    while (attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        attempts++;
+                        
+                        if (window.farcasterSDK && window.sdkLoaded) {
+                            sdk = window.farcasterSDK;
+                            console.log('✅ Farcaster SDK loaded successfully');
+                            break;
+                        }
+                        
+                        console.log(`⏳ Waiting for SDK... (${attempts}/${maxAttempts})`);
                     }
+                    
+                    if (!window.farcasterSDK || !window.sdkLoaded) {
+                        throw new Error('SDK failed to load within timeout');
+                    }
+                    
                 } catch (error) {
-                    console.log('Failed to load Farcaster SDK, using mock:', error);
+                    console.log('⚠️ Failed to load Farcaster SDK, using mock:', error);
                     sdk = mockSdk;
                 }
             } else {
-                console.log('Local environment detected, using mock SDK');
+                console.log('🏠 Local environment detected, using mock SDK');
                 sdk = mockSdk;
             }
             
-            initApp();
+            // Always call initApp after SDK setup
+            await initApp();
         }
         
         // Start loading SDK when page loads
@@ -317,15 +341,19 @@
         
         // Initialize the app
         async function initApp() {
-            console.log('Protardio Gallery initialized');
+            console.log('🎭 Protardio Gallery initializing...');
             
             try {
+                // Always call ready() regardless of SDK type
+                console.log('📞 Calling sdk.actions.ready()...');
                 await sdk.actions.ready();
-                console.log('✅ SDK ready called successfully');
+                console.log('✅ SDK ready() called successfully');
             } catch (error) {
-                console.log('⚠️ Ready call failed:', error);
+                console.error('⚠️ Ready call failed:', error);
+                // Don't let this stop the app from working
             }
             
+            // Load saved state
             const stored = localStorage.getItem('lastProtardioView');
             if (stored) {
                 lastViewTime = new Date(stored);
@@ -333,6 +361,7 @@
             }
             
             updateDebugInfo();
+            console.log('🎉 Protardio Gallery ready!');
         }
         
         // Update debug info display
@@ -349,9 +378,8 @@
         }
         
         // Update frame meta tag with current protardio
-        function updateFrameMetaTag(protardioIndex, isB2Variant) {
-            const variant = isB2Variant ? '_b2' : '';
-            const imageUrl = `https://protardio-mini-app.vercel.app/protardios/protardios/${protardioIndex}${variant}.png`;
+        function updateFrameMetaTag(protardioIndex) {
+            const imageUrl = `https://protardio-mini-app.vercel.app/protardios/protardios/${protardioIndex}.png`;
             
             // Update the frame image meta tag to show current protardio
             let imageMetaTag = document.querySelector('meta[property="fc:frame:image"]');
@@ -365,14 +393,12 @@
                 document.head.appendChild(imageMetaTag);
             }
             
-            console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}${isB2Variant ? ' (B2)' : ''}`);
+            console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}`);
         }
 
-        // Generate protardio image path
+        // Generate protardio image path - simplified for sequential numbering
         function generateProtardioPath(index) {
-            const useB2Variant = Math.random() < 0.5;
-            const filename = useB2Variant ? `${index}_b2.png` : `${index}.png`;
-            return `./protardios/protardios/${filename}`;
+            return `./protardios/protardios/${index}.png`;
         }
         
         // Check if user is in cooldown period
@@ -427,11 +453,10 @@
             setTimeout(() => {
                 try {
                     // FIXED: Now uses TOTAL_IMAGES (2000) instead of hardcoded 1000
-                    currentImageIndex = Math.floor(Math.random() * TOTAL_IMAGES);
+                    currentImageIndex = Math.floor(Math.random() * TOTAL_IMAGES) + 1; // +1 because files are now 1-2000
                     const imagePath = generateProtardioPath(currentImageIndex);
-                    const isB2Variant = imagePath.includes('_b2');
                     
-                    console.log(`Loading Protardio #${currentImageIndex}${isB2Variant ? ' (B2 Variant)' : ''}: ${imagePath}`);
+                    console.log(`Loading Protardio #${currentImageIndex}: ${imagePath}`);
                     
                     const img = new Image();
                     img.onload = function() {
@@ -442,10 +467,10 @@
                         lastViewTime = new Date();
                         localStorage.setItem('lastProtardioView', lastViewTime.toISOString());
                         
-                        updateFrameMetaTag(currentImageIndex, isB2Variant);
+                        updateFrameMetaTag(currentImageIndex);
                         
                         statusEl.innerHTML = `
-                            <div>🎉 <strong>Protardio #${currentImageIndex}</strong> ${isB2Variant ? '(B2 Variant)' : ''} revealed!</div>
+                            <div>🎉 <strong>Protardio #${currentImageIndex}</strong> revealed!</div>
                             <p>A unique member of the Protardio collection! 🎭</p>
                             <p>Come back in 1 hour for another random Protardio, or share to reset!</p>
                         `;
