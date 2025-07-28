@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protardio Mini App</title>
     
-    <!-- Farcaster Mini App Embed Meta Tag -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/500.png","button":{"title":"🎲 View Random Protardio","action":{"type":"launch_frame","name":"Protardio Gallery","url":"https://protardio-mini-app.vercel.app","splashImageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/100.png","splashBackgroundColor":"#FFD700"}}}' />
+    <!-- Farcaster Mini App Meta Tags -->
+    <meta property="fc:frame" content="vNext" />
+    <meta property="fc:frame:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/500.png" />
+    <meta property="fc:frame:button:1" content="🎲 View Random Protardio" />
+    <meta property="fc:frame:button:1:action" content="launch_frame" />
+    <meta property="fc:frame:launch:name" content="Protardio Gallery" />
+    <meta property="fc:frame:launch:url" content="https://protardio-mini-app.vercel.app" />
+    <meta property="fc:frame:launch:splash:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/100.png" />
+    <meta property="fc:frame:launch:splash:background-color" content="#FFD700" />
     
     <style>
         * {
@@ -266,26 +273,46 @@
             }
         };
         
-        // SDK initialization
-        if (typeof window !== 'undefined' && window.parent !== window) {
-            try {
-                import('https://esm.sh/@farcaster/frame-sdk').then(module => {
-                    sdk = module.sdk;
-                    initApp();
-                }).catch(error => {
-                    console.log('Failed to load Farcaster SDK, using mock');
+        // FIXED: Improved SDK initialization with better error handling
+        async function loadSDK() {
+            if (typeof window !== 'undefined' && window.parent !== window) {
+                try {
+                    // Try to load the SDK from the CDN
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.textContent = `
+                        import { sdk } from 'https://esm.sh/@farcaster/frame-sdk';
+                        window.farcasterSDK = sdk;
+                    `;
+                    document.head.appendChild(script);
+                    
+                    // Wait a bit for the SDK to load
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    if (window.farcasterSDK) {
+                        sdk = window.farcasterSDK;
+                        console.log('✅ Farcaster SDK loaded successfully');
+                    } else {
+                        console.log('⚠️ SDK not available, using mock');
+                        sdk = mockSdk;
+                    }
+                } catch (error) {
+                    console.log('Failed to load Farcaster SDK, using mock:', error);
                     sdk = mockSdk;
-                    initApp();
-                });
-            } catch (error) {
-                console.log('Using mock SDK for local testing');
+                }
+            } else {
+                console.log('Local environment detected, using mock SDK');
                 sdk = mockSdk;
-                initApp();
             }
-        } else {
-            console.log('Local environment detected, using mock SDK');
-            sdk = mockSdk;
+            
             initApp();
+        }
+        
+        // Start loading SDK when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadSDK);
+        } else {
+            loadSDK();
         }
         
         // Initialize the app
@@ -326,29 +353,18 @@
             const variant = isB2Variant ? '_b2' : '';
             const imageUrl = `https://protardio-mini-app.vercel.app/protardios/protardios/${protardioIndex}${variant}.png`;
             
-            const frameData = {
-                version: "next",
-                imageUrl: imageUrl,
-                button: {
-                    title: "🎲 View Random Protardio",
-                    action: {
-                        type: "launch_frame",
-                        name: "Protardio Gallery",
-                        url: "https://protardio-mini-app.vercel.app",
-                        splashImageUrl: "https://protardio-mini-app.vercel.app/protardios/protardios/100.png",
-                        splashBackgroundColor: "#FFD700"
-                    }
-                }
-            };
-            
-            let metaTag = document.querySelector('meta[name="fc:frame"]');
-            if (!metaTag) {
-                metaTag = document.createElement('meta');
-                metaTag.name = 'fc:frame';
-                document.head.appendChild(metaTag);
+            // Update the frame image meta tag to show current protardio
+            let imageMetaTag = document.querySelector('meta[property="fc:frame:image"]');
+            if (imageMetaTag) {
+                imageMetaTag.content = imageUrl;
+            } else {
+                // Create the meta tag if it doesn't exist
+                imageMetaTag = document.createElement('meta');
+                imageMetaTag.setAttribute('property', 'fc:frame:image');
+                imageMetaTag.content = imageUrl;
+                document.head.appendChild(imageMetaTag);
             }
             
-            metaTag.content = JSON.stringify(frameData);
             console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}${isB2Variant ? ' (B2)' : ''}`);
         }
 
@@ -396,7 +412,7 @@
             shareBtn.style.display = 'inline-block';
         }
         
-        // View random protardio
+        // FIXED: View random protardio - now uses TOTAL_IMAGES instead of hardcoded 1000
         window.viewRandomProtardio = async function() {
             if (checkCooldownStatus()) return;
             
@@ -410,7 +426,8 @@
             
             setTimeout(() => {
                 try {
-                    currentImageIndex = Math.floor(Math.random() * 1000);
+                    // FIXED: Now uses TOTAL_IMAGES (2000) instead of hardcoded 1000
+                    currentImageIndex = Math.floor(Math.random() * TOTAL_IMAGES);
                     const imagePath = generateProtardioPath(currentImageIndex);
                     const isB2Variant = imagePath.includes('_b2');
                     
