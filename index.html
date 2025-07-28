@@ -5,18 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protardio Mini App</title>
     
-    <!-- Farcaster Mini App Meta Tags (v2) -->
-    <meta property="fc:frame" content="vNext" />
-    <meta property="fc:frame:image" content="https://protardio-mini-app.vercel.app/protardios/protardios/500.png" />
-    <meta property="fc:frame:button:1" content="🎲 Open Protardio Gallery" />
-    <meta property="fc:frame:button:1:action" content="launch_frame" />
-    <meta property="fc:frame:button:1:target" content="https://protardio-mini-app.vercel.app" />
-    
-    <!-- Mini App specific tags -->
-    <meta name="fc:frame:miniapp" content='{"version":"1","imageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/500.png","button":{"title":"🎲 Open Protardio Gallery","action":{"type":"launch_frame","name":"Protardio Gallery","url":"https://protardio-mini-app.vercel.app","splashImageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/100.png","splashBackgroundColor":"#FFD700"}}}' />
-    
-    <!-- Fallback frame tags for older clients -->
-    <meta property="fc:frame:post_url" content="https://protardio-mini-app.vercel.app" />
+    <!-- Farcaster Mini App Meta Tag (correct format) -->
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/500.png","button":{"title":"🎲 Open Protardio Gallery","action":{"type":"launch_frame","name":"Protardio Gallery","url":"https://protardio-mini-app.vercel.app","splashImageUrl":"https://protardio-mini-app.vercel.app/protardios/protardios/100.png","splashBackgroundColor":"#FFD700"}}}' />
     
     <!-- Open Graph tags for social sharing -->
     <meta property="og:title" content="Protardio Gallery - Random Collection Viewer" />
@@ -292,25 +282,25 @@
             }
         };
         
-        // FIXED: Use the correct miniapp-sdk (not frame-sdk)
+        // FIXED: Use the correct @farcaster/frame-sdk (not miniapp-sdk) 
         async function loadSDK() {
             console.log('🔄 Starting SDK initialization...');
             
             if (typeof window !== 'undefined' && window.parent !== window) {
                 try {
-                    console.log('📡 Farcaster environment detected, loading miniapp SDK...');
+                    console.log('📡 Farcaster environment detected, loading frame SDK...');
                     
-                    // Use the official miniapp-sdk ESM import
+                    // Use the correct frame-sdk ESM import
                     const script = document.createElement('script');
                     script.type = 'module';
                     script.textContent = `
                         try {
-                            const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+                            const { sdk } = await import('https://esm.sh/@farcaster/frame-sdk');
                             window.farcasterSDK = sdk;
                             window.sdkLoaded = true;
-                            console.log('✅ MiniApp SDK imported successfully');
+                            console.log('✅ Frame SDK imported successfully');
                         } catch (error) {
-                            console.error('❌ MiniApp SDK import failed:', error);
+                            console.error('❌ Frame SDK import failed:', error);
                             window.sdkLoaded = false;
                         }
                     `;
@@ -323,21 +313,21 @@
                     while (attempts < maxAttempts) {
                         if (window.farcasterSDK && window.sdkLoaded) {
                             sdk = window.farcasterSDK;
-                            console.log('✅ Farcaster MiniApp SDK loaded successfully');
+                            console.log('✅ Farcaster Frame SDK loaded successfully');
                             break;
                         }
                         
                         await new Promise(resolve => setTimeout(resolve, 500));
                         attempts++;
-                        console.log(`⏳ Waiting for MiniApp SDK... (${attempts}/${maxAttempts})`);
+                        console.log(`⏳ Waiting for Frame SDK... (${attempts}/${maxAttempts})`);
                     }
                     
                     if (!window.farcasterSDK || !window.sdkLoaded) {
-                        throw new Error('MiniApp SDK failed to load within timeout');
+                        throw new Error('Frame SDK failed to load within timeout');
                     }
                     
                 } catch (error) {
-                    console.error('⚠️ Failed to load MiniApp SDK:', error);
+                    console.error('⚠️ Failed to load Frame SDK:', error);
                     console.log('🔄 Falling back to mock SDK...');
                     sdk = mockSdk;
                 }
@@ -416,38 +406,29 @@
         function updateFrameMetaTag(protardioIndex) {
             const imageUrl = `https://protardio-mini-app.vercel.app/protardios/protardios/${protardioIndex}.png`;
             
-            // Update the frame image meta tag to show current protardio
-            let imageMetaTag = document.querySelector('meta[property="fc:frame:image"]');
-            if (imageMetaTag) {
-                imageMetaTag.content = imageUrl;
-            } else {
-                // Create the meta tag if it doesn't exist
-                imageMetaTag = document.createElement('meta');
-                imageMetaTag.setAttribute('property', 'fc:frame:image');
-                imageMetaTag.content = imageUrl;
-                document.head.appendChild(imageMetaTag);
+            // Update the fc:frame meta tag with new image
+            let frameMetaTag = document.querySelector('meta[name="fc:frame"]');
+            if (frameMetaTag) {
+                // Parse existing content and update imageUrl
+                try {
+                    const frameData = JSON.parse(frameMetaTag.content);
+                    frameData.imageUrl = imageUrl;
+                    frameMetaTag.content = JSON.stringify(frameData);
+                } catch (error) {
+                    console.error('Failed to update frame meta tag:', error);
+                }
             }
             
             // Also update Open Graph tags for better social sharing
             let ogImageTag = document.querySelector('meta[property="og:image"]');
             if (ogImageTag) {
                 ogImageTag.content = imageUrl;
-            } else {
-                ogImageTag = document.createElement('meta');
-                ogImageTag.setAttribute('property', 'og:image');
-                ogImageTag.content = imageUrl;
-                document.head.appendChild(ogImageTag);
             }
             
             // Update Twitter Card image
             let twitterImageTag = document.querySelector('meta[name="twitter:image"]');
             if (twitterImageTag) {
                 twitterImageTag.content = imageUrl;
-            } else {
-                twitterImageTag = document.createElement('meta');
-                twitterImageTag.setAttribute('name', 'twitter:image');
-                twitterImageTag.content = imageUrl;
-                document.head.appendChild(twitterImageTag);
             }
             
             console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}`);
