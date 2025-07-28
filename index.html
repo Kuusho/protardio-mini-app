@@ -16,6 +16,8 @@
         }
 
         body {
+
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
             min-height: 100vh;
@@ -207,6 +209,7 @@
             background-size: 200px 100%;
             animation: shimmer 2s infinite;
         }
+    }
     </style>
 </head>
 <body>
@@ -327,14 +330,42 @@
             }
         }
         
-        // Generate protardio image path
-        function generateProtardioPath(index) {
+        // Update frame meta tag with current protardio
+        function updateFrameMetaTag(protardioIndex, isB2Variant = false) {
+            const variant = isB2Variant ? '_b2' : '';
+            const imageUrl = `https://protardio-mini-app.vercel.app/protardios/protardios/${protardioIndex}${variant}.png`;
+            
+            const frameData = {
+                version: "next",
+                imageUrl: imageUrl,
+                button: {
+                    title: "🎲 View Random Protardio",
+                    action: {
+                        type: "launch_frame",
+                        name: "Protardio Gallery",
+                        url: "https://protardio-mini-app.vercel.app",
+                        splashImageUrl: "https://protardio-mini-app.vercel.app/protardios/protardios/100.png",
+                        splashBackgroundColor: "#FFD700"
+                    }
+                }
+            };
+            
+            // Update or create the meta tag
+            let metaTag = document.querySelector('meta[name="fc:frame"]');
+            if (!metaTag) {
+                metaTag = document.createElement('meta');
+                metaTag.name = 'fc:frame';
+                document.head.appendChild(metaTag);
+            }
+            
+            metaTag.content = JSON.stringify(frameData);
+            console.log(`🖼️ Frame preview updated to Protardio #${protardioIndex}${isB2Variant ? ' (B2)' : ''}`);
+        }
             // Randomly choose between regular and _b2 variant
             const useB2Variant = Math.random() < 0.5;
             const filename = useB2Variant ? `${index}_b2.png` : `${index}.png`;
             return `./protardios/protardios/${filename}`;
-        }
-        
+            
         // Check if user is in cooldown period
         function checkCooldownStatus() {
             if (!lastViewTime) return false;
@@ -405,6 +436,9 @@
                         // Update state
                         lastViewTime = new Date();
                         localStorage.setItem('lastProtardioView', lastViewTime.toISOString());
+                        
+                        // Update frame meta tag with current protardio for sharing
+                        updateFrameMetaTag(currentImageIndex, isB2Variant);
                         
                         // Show success message
                         statusEl.innerHTML = `
