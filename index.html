@@ -406,6 +406,10 @@
         async function initApp() {
             debugLog('🎭 Protardio Gallery initializing...');
             
+            // Initialize variables in proper scope
+            let ethereumConflictDetected = false;
+            const originalEthereum = window.ethereum;
+            
             // Check for ethereum conflicts before proceeding
             debugLog('Pre-init environment check', {
                 hasEthereum: !!window.ethereum,
@@ -429,10 +433,6 @@
                 }
                 
                 debugLog('📞 About to call sdk.actions.ready() with mobile optimizations...');
-                
-                // Protect against ethereum conflicts during ready() call
-                const originalEthereum = window.ethereum;
-                let ethereumConflictDetected = false;
                 
                 try {
                     // CRITICAL FIX #2: Call ready() with mobile optimizations
