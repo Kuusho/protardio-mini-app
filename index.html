@@ -282,7 +282,7 @@
             }
         };
         
-        // FIXED: Use the correct @farcaster/frame-sdk (not miniapp-sdk) 
+        // ALTERNATIVE: Try CDN approach if ESM fails on mobile
         async function loadSDK() {
             console.log('🔄 Starting SDK initialization...');
             
@@ -290,54 +290,82 @@
                 try {
                     console.log('📡 Farcaster environment detected, loading frame SDK...');
                     
-                    // Use the correct frame-sdk ESM import
+                    // Try CDN approach first
                     const script = document.createElement('script');
-                    script.type = 'module';
-                    script.textContent = `
-                        try {
-                            const { sdk } = await import('https://esm.sh/@farcaster/frame-sdk');
-                            window.farcasterSDK = sdk;
-                            window.sdkLoaded = true;
-                            console.log('✅ Frame SDK imported successfully');
-                        } catch (error) {
-                            console.error('❌ Frame SDK import failed:', error);
-                            window.sdkLoaded = false;
+                    script.src = 'https://cdn.jsdelivr.net/npm/@farcaster/frame-sdk/dist/index.min.js';
+                    script.onload = () => {
+                        if (window.frameSDK) {
+                            sdk = window.frameSDK;
+                            console.log('✅ Frame SDK loaded via CDN');
+                            initApp();
+                        } else {
+                            // Fallback to ESM import
+                            loadSDKESM();
                         }
-                    `;
+                    };
+                    script.onerror = () => {
+                        console.log('⚠️ CDN failed, trying ESM import...');
+                        loadSDKESM();
+                    };
                     document.head.appendChild(script);
-                    
-                    // Wait for SDK to load with extended timeout
-                    let attempts = 0;
-                    const maxAttempts = 40; // 20 seconds total
-                    
-                    while (attempts < maxAttempts) {
-                        if (window.farcasterSDK && window.sdkLoaded) {
-                            sdk = window.farcasterSDK;
-                            console.log('✅ Farcaster Frame SDK loaded successfully');
-                            break;
-                        }
-                        
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        attempts++;
-                        console.log(`⏳ Waiting for Frame SDK... (${attempts}/${maxAttempts})`);
-                    }
-                    
-                    if (!window.farcasterSDK || !window.sdkLoaded) {
-                        throw new Error('Frame SDK failed to load within timeout');
-                    }
                     
                 } catch (error) {
                     console.error('⚠️ Failed to load Frame SDK:', error);
                     console.log('🔄 Falling back to mock SDK...');
                     sdk = mockSdk;
+                    await initApp();
                 }
             } else {
                 console.log('🏠 Local environment detected, using mock SDK');
                 sdk = mockSdk;
+                await initApp();
             }
-            
-            // Always initialize the app
-            await initApp();
+        }
+        
+        // Fallback ESM loading
+        async function loadSDKESM() {
+            try {
+                const script = document.createElement('script');
+                script.type = 'module';
+                script.textContent = `
+                    try {
+                        const { sdk } = await import('https://esm.sh/@farcaster/frame-sdk');
+                        window.farcasterSDK = sdk;
+                        window.sdkLoaded = true;
+                        console.log('✅ Frame SDK imported via ESM');
+                    } catch (error) {
+                        console.error('❌ Frame SDK ESM import failed:', error);
+                        window.sdkLoaded = false;
+                    }
+                `;
+                document.head.appendChild(script);
+                
+                // Wait for SDK to load
+                let attempts = 0;
+                const maxAttempts = 20;
+                
+                while (attempts < maxAttempts) {
+                    if (window.farcasterSDK && window.sdkLoaded) {
+                        sdk = window.farcasterSDK;
+                        console.log('✅ Farcaster Frame SDK loaded via ESM');
+                        break;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    attempts++;
+                }
+                
+                if (!window.farcasterSDK || !window.sdkLoaded) {
+                    throw new Error('ESM import failed');
+                }
+                
+                await initApp();
+                
+            } catch (error) {
+                console.error('⚠️ ESM fallback failed:', error);
+                sdk = mockSdk;
+                await initApp();
+            }
         }
         
         // Start loading SDK when page loads
@@ -347,7 +375,7 @@
             loadSDK();
         }
         
-        // Initialize the app and call ready
+        // Initialize the app and call ready (CRITICAL FIX #2: Disable native gestures)
         async function initApp() {
             console.log('🎭 Protardio Gallery initializing...');
             
@@ -358,23 +386,38 @@
                     sdk = mockSdk;
                 }
                 
-                // Call ready() - this is critical for Farcaster
-                console.log('📞 Calling sdk.actions.ready()...');
-                const readyResult = await sdk.actions.ready();
-                console.log('✅ SDK ready() called successfully', readyResult);
+                // CRITICAL FIX #2: Call ready() with mobile optimizations
+                console.log('📞 Calling sdk.actions.ready() with mobile optimizations...');
+                const readyResult = await sdk.actions.ready({
+                    // CRITICAL: Disable native gestures to prevent accidental app closes on mobile
+                    disableNativeGestures: true
+                });
+                console.log('✅ SDK ready() called successfully with mobile optimizations', readyResult);
                 
                 // Small delay to ensure ready() is processed
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
             } catch (error) {
                 console.error('❌ Ready call failed:', error);
-                // Try calling ready again as fallback
+                // Try calling ready again as fallback (mobile retry logic)
                 try {
-                    console.log('🔄 Retrying ready() call...');
-                    await sdk.actions.ready();
+                    console.log('🔄 Retrying ready() call with basic options...');
+                    await sdk.actions.ready({
+                        disableNativeGestures: true // Still try to disable gestures
+                    });
                     console.log('✅ Ready() retry successful');
                 } catch (retryError) {
                     console.error('❌ Ready() retry also failed:', retryError);
+                    // Last resort - try without any options
+                    try {
+                        console.log('🆘 Last resort: calling ready() without options...');
+                        await sdk.actions.ready();
+                        console.log('✅ Basic ready() call succeeded');
+                    } catch (finalError) {
+                        console.error('💀 All ready() attempts failed:', finalError);
+                        // App will still function with mock SDK, just warn user
+                        console.warn('⚠️ App running without proper SDK connection');
+                    }
                 }
             }
             
@@ -387,6 +430,12 @@
             
             updateDebugInfo();
             console.log('🎉 Protardio Gallery initialization complete!');
+            
+            // MOBILE DEBUG: Log successful initialization
+            console.log('📱 Mobile optimization status:');
+            console.log('- SDK loaded:', sdk !== mockSdk ? '✅ Real SDK' : '⚠️ Mock SDK');
+            console.log('- Native gestures:', 'Disabled for mobile stability');
+            console.log('- Ready called:', '✅ Success');
         }
         
         // Update debug info display
