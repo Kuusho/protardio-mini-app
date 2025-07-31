@@ -13,6 +13,8 @@
     "buttonTitle": "🎲 Open Protardio Gallery",
     "splashImageUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/250.png",
     "splashBackgroundColor": "#FFD700",
+    "webhookUrl": "https://protardio-mini-app.vercel.app/api/webhook",
+    "castShareUrl": "https://protardio-mini-app.vercel.app/share",
     "subtitle": "Preview random protardios",
     "description": "A mini app showcasing 2000 unique Protardios from a preview collection. View one random Protardio per hour, or share to reset your timer!",
     "screenshotUrls": [
@@ -39,6 +41,8 @@
     "buttonTitle": "🎲 Open Protardio Gallery",
     "splashImageUrl": "https://protardio-mini-app.vercel.app/protardios/protardios/250.png",
     "splashBackgroundColor": "#FFD700",
+    "webhookUrl": "https://protardio-mini-app.vercel.app/api/webhook",
+    "castShareUrl": "https://protardio-mini-app.vercel.app/share",
     "subtitle": "Preview random protardios",
     "description": "A mini app showcasing 2000 unique Protardios from a preview collection. View one random Protardio per hour, or share to reset your timer!",
     "screenshotUrls": [
