@@ -270,21 +270,26 @@
             if (data) console.log(`[${timestamp}] 📊 Data:`, data);
         }
         
-        // Mock Farcaster SDK for local testing
+        // Mock Farcaster SDK for local testing (FIXED: Sandbox-compatible)
         const mockSdk = {
             context: {
                 user: { fid: 12345, username: "protardio_fan" },
                 client: { clientFid: 9152, added: false }
             },
             actions: {
-                ready: async () => {
-                    console.log("✅ Mock SDK: ready() called");
+                ready: async (options = {}) => {
+                    debugLog("✅ Mock SDK: ready() called", options);
                     return Promise.resolve();
                 },
                 composeCast: async (options) => {
-                    console.log("Mock: Compose cast:", options);
-                    alert("Mock: Cast composed! " + options.text);
-                    return { hash: "0x123" };
+                    debugLog("Mock SDK: composeCast called", options);
+                    // FIXED: Don't use alert() in sandboxed environment
+                    // Instead, show a console message and resolve successfully
+                    debugLog("✅ Mock cast composed successfully", {
+                        text: options.text,
+                        embeds: options.embeds
+                    });
+                    return Promise.resolve({ hash: "0x123456789" });
                 }
             }
         };
