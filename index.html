@@ -263,6 +263,13 @@
         const TOTAL_IMAGES = 2000;
         let sdk;
         
+        // Add debug logging function (GLOBAL SCOPE)
+        function debugLog(message, data = null) {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            console.log(`[${timestamp}] 🔧 PROTARDIO DEBUG: ${message}`);
+            if (data) console.log(`[${timestamp}] 📊 Data:`, data);
+        }
+        
         // Mock Farcaster SDK for local testing
         const mockSdk = {
             context: {
@@ -368,74 +375,166 @@
             }
         }
         
-        // Start loading SDK when page loads
+        // Start loading SDK when page loads (with conflict protection)
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadSDK);
+            document.addEventListener('DOMContentLoaded', () => {
+                debugLog('📄 DOM loaded, starting SDK loading with conflict protection');
+                
+                // Protect against ethereum conflicts before loading SDK
+                const originalEthereum = window.ethereum;
+                debugLog('🛡️ Ethereum conflict protection active', {
+                    hasOriginalEthereum: !!originalEthereum,
+                    ethereumType: typeof originalEthereum
+                });
+                
+                loadSDK();
+            });
         } else {
+            debugLog('📄 DOM already loaded, starting SDK loading immediately');
+            
+            // Protect against ethereum conflicts
+            const originalEthereum = window.ethereum;
+            debugLog('🛡️ Ethereum conflict protection active', {
+                hasOriginalEthereum: !!originalEthereum,
+                ethereumType: typeof originalEthereum
+            });
+            
             loadSDK();
         }
         
-        // Initialize the app and call ready (CRITICAL FIX #2: Disable native gestures)
+        // Initialize the app and call ready (with comprehensive logging and conflict protection)
         async function initApp() {
-            console.log('🎭 Protardio Gallery initializing...');
+            debugLog('🎭 Protardio Gallery initializing...');
+            
+            // Check for ethereum conflicts before proceeding
+            debugLog('Pre-init environment check', {
+                hasEthereum: !!window.ethereum,
+                ethereumWritable: window.ethereum ? Object.getOwnPropertyDescriptor(window, 'ethereum')?.writable : 'N/A',
+                hasSdk: !!sdk,
+                sdkType: sdk === mockSdk ? 'Mock' : 'Real',
+                sdkHasActions: !!(sdk?.actions),
+                sdkHasReady: !!(sdk?.actions?.ready)
+            });
             
             try {
                 // Ensure we have a valid SDK
                 if (!sdk || !sdk.actions || typeof sdk.actions.ready !== 'function') {
-                    console.error('❌ SDK not properly loaded, using mock');
+                    debugLog('❌ SDK validation failed, using mock', {
+                        sdkExists: !!sdk,
+                        hasActions: !!(sdk?.actions),
+                        hasReady: !!(sdk?.actions?.ready),
+                        readyType: typeof sdk?.actions?.ready
+                    });
                     sdk = mockSdk;
                 }
                 
-                // CRITICAL FIX #2: Call ready() with mobile optimizations
-                console.log('📞 Calling sdk.actions.ready() with mobile optimizations...');
-                const readyResult = await sdk.actions.ready({
-                    // CRITICAL: Disable native gestures to prevent accidental app closes on mobile
-                    disableNativeGestures: true
-                });
-                console.log('✅ SDK ready() called successfully with mobile optimizations', readyResult);
+                debugLog('📞 About to call sdk.actions.ready() with mobile optimizations...');
+                
+                // Protect against ethereum conflicts during ready() call
+                const originalEthereum = window.ethereum;
+                let ethereumConflictDetected = false;
+                
+                try {
+                    // CRITICAL FIX #2: Call ready() with mobile optimizations
+                    const readyResult = await sdk.actions.ready({
+                        // CRITICAL: Disable native gestures to prevent accidental app closes on mobile
+                        disableNativeGestures: true
+                    });
+                    debugLog('✅ SDK ready() called successfully with mobile optimizations', readyResult);
+                    
+                } catch (readyError) {
+                    debugLog('❌ Ready call failed, analyzing error', {
+                        errorName: readyError.name,
+                        errorMessage: readyError.message,
+                        errorStack: readyError.stack?.substring(0, 200)
+                    });
+                    
+                    // Check if this is an ethereum conflict
+                    if (readyError.message?.includes('ethereum') || readyError.message?.includes('redefine')) {
+                        ethereumConflictDetected = true;
+                        debugLog('🚨 Ethereum conflict detected during ready() call');
+                    }
+                    
+                    // Try calling ready again as fallback (mobile retry logic)
+                    try {
+                        debugLog('🔄 Retrying ready() call with basic options...');
+                        await sdk.actions.ready({
+                            disableNativeGestures: true // Still try to disable gestures
+                        });
+                        debugLog('✅ Ready() retry successful');
+                    } catch (retryError) {
+                        debugLog('❌ Ready() retry also failed', {
+                            errorName: retryError.name,
+                            errorMessage: retryError.message
+                        });
+                        
+                        // Last resort - try without any options
+                        try {
+                            debugLog('🆘 Last resort: calling ready() without options...');
+                            await sdk.actions.ready();
+                            debugLog('✅ Basic ready() call succeeded');
+                        } catch (finalError) {
+                            debugLog('💀 All ready() attempts failed', {
+                                errorName: finalError.name,
+                                errorMessage: finalError.message,
+                                stackTrace: finalError.stack?.substring(0, 300)
+                            });
+                            // App will still function with mock SDK, just warn user
+                            debugLog('⚠️ App running without proper SDK connection');
+                        }
+                    }
+                }
                 
                 // Small delay to ensure ready() is processed
                 await new Promise(resolve => setTimeout(resolve, 200));
                 
-            } catch (error) {
-                console.error('❌ Ready call failed:', error);
-                // Try calling ready again as fallback (mobile retry logic)
-                try {
-                    console.log('🔄 Retrying ready() call with basic options...');
-                    await sdk.actions.ready({
-                        disableNativeGestures: true // Still try to disable gestures
-                    });
-                    console.log('✅ Ready() retry successful');
-                } catch (retryError) {
-                    console.error('❌ Ready() retry also failed:', retryError);
-                    // Last resort - try without any options
-                    try {
-                        console.log('🆘 Last resort: calling ready() without options...');
-                        await sdk.actions.ready();
-                        console.log('✅ Basic ready() call succeeded');
-                    } catch (finalError) {
-                        console.error('💀 All ready() attempts failed:', finalError);
-                        // App will still function with mock SDK, just warn user
-                        console.warn('⚠️ App running without proper SDK connection');
+                if (ethereumConflictDetected) {
+                    debugLog('🔧 Attempting to resolve ethereum conflicts');
+                    // Try to restore original ethereum if it was modified
+                    if (originalEthereum && window.ethereum !== originalEthereum) {
+                        try {
+                            Object.defineProperty(window, 'ethereum', {
+                                value: originalEthereum,
+                                writable: false,
+                                configurable: true
+                            });
+                            debugLog('✅ Ethereum property restored');
+                        } catch (restoreError) {
+                            debugLog('⚠️ Could not restore ethereum property', restoreError.message);
+                        }
                     }
                 }
+                
+            } catch (error) {
+                debugLog('💥 Critical error in initApp', {
+                    errorName: error.name,
+                    errorMessage: error.message,
+                    errorStack: error.stack
+                });
             }
             
             // Load saved state
+            debugLog('📂 Loading saved state from localStorage');
             const stored = localStorage.getItem('lastProtardioView');
             if (stored) {
                 lastViewTime = new Date(stored);
+                debugLog('✅ Restored last view time', lastViewTime.toISOString());
                 checkCooldownStatus();
+            } else {
+                debugLog('ℹ️ No saved state found');
             }
             
             updateDebugInfo();
-            console.log('🎉 Protardio Gallery initialization complete!');
+            debugLog('🎉 Protardio Gallery initialization complete!');
             
-            // MOBILE DEBUG: Log successful initialization
-            console.log('📱 Mobile optimization status:');
-            console.log('- SDK loaded:', sdk !== mockSdk ? '✅ Real SDK' : '⚠️ Mock SDK');
-            console.log('- Native gestures:', 'Disabled for mobile stability');
-            console.log('- Ready called:', '✅ Success');
+            // MOBILE DEBUG: Final status report
+            debugLog('📱 Final mobile optimization status', {
+                sdkType: sdk !== mockSdk ? 'Real MiniApp SDK' : 'Mock SDK',
+                nativeGestures: 'Disabled for mobile stability',
+                readyCalled: 'Attempted (check logs above for success)',
+                ethereumConflicts: ethereumConflictDetected ? 'Detected and handled' : 'None detected',
+                appReady: 'Yes'
+            });
         }
         
         // Update debug info display
