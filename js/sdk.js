@@ -1,13 +1,15 @@
+// js/sdk.js - FIXED: Use modern @farcaster/miniapp-sdk
+
 /**
- * Farcaster Frame SDK Loading System
+ * Farcaster MiniApp SDK Loading System
  * 
- * This file handles loading the Farcaster Frame SDK with enhanced mobile compatibility.
- * The system includes multiple fallback strategies to ensure the app works across
- * different devices and environments.
+ * CRITICAL FIXES:
+ * 1. Use @farcaster/miniapp-sdk instead of deprecated frame-sdk
+ * 2. Proper global window.sdk reference
+ * 3. Correct SDK property detection
  */
 
-// Mock Farcaster SDK for local testing (FIXED: Sandbox-compatible)
-// This provides a fallback when the real SDK can't be loaded
+// Mock Farcaster SDK for local testing
 const mockSdk = {
     context: {
         user: { fid: 12345, username: "protardio_fan" },
@@ -20,8 +22,6 @@ const mockSdk = {
         },
         composeCast: async (options) => {
             debugLog("Mock SDK: composeCast called", options);
-            // FIXED: Don't use alert() in sandboxed environment
-            // Instead, show a console message and resolve successfully
             debugLog("✅ Mock cast composed successfully", {
                 text: options.text,
                 embeds: options.embeds
@@ -31,258 +31,268 @@ const mockSdk = {
     }
 };
 
+// Initialize global SDK variable
+window.sdk = null;
+
 /**
- * Enhanced mobile-compatible SDK loading
- * 
- * CHANGES MADE:
- * 1. Added enhanced mobile detection with multiple criteria
- * 2. Implemented separate loading strategies for mobile vs desktop
- * 3. Added comprehensive environment logging for debugging
- * 4. Created mobile-specific fallback mechanisms
+ * Enhanced SDK loading with modern MiniApp SDK
  */
 async function loadSDK() {
-    console.log('🔄 Starting SDK initialization...');
+    console.log('🔄 Starting MiniApp SDK initialization...');
     
-    // ENHANCED MOBILE DETECTION:
-    // Uses both user agent detection AND screen size detection
-    // This catches mobile devices that might not be detected by user agent alone
+    // Enhanced mobile detection
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                     (window.innerWidth <= 768 && window.innerHeight <= 1024);
     
-    // COMPREHENSIVE ENVIRONMENT LOGGING:
-    // Logs all relevant environment information for debugging mobile issues
     console.log('📱 Environment detection:', {
         isMobile: isMobile,
-        userAgent: navigator.userAgent,
+        userAgent: navigator.userAgent.substring(0, 100),
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
         isFrame: typeof window !== 'undefined' && window.parent !== window
     });
     
-    // FRAME ENVIRONMENT DETECTION:
-    // Checks if we're running inside a Farcaster frame
+    // Frame environment detection
     if (typeof window !== 'undefined' && window.parent !== window) {
         try {
-            console.log('📡 Farcaster environment detected, loading frame SDK...');
+            console.log('📡 Farcaster environment detected, loading MiniApp SDK...');
             
-            // MOBILE-SPECIFIC LOADING STRATEGY:
-            // Different loading approaches for mobile vs desktop
-            // Mobile devices often have stricter security policies and different JS execution environments
             if (isMobile) {
                 console.log('📱 Mobile detected, using simplified loading...');
-                await loadSDKMobile();
+                await loadMiniAppSDKMobile();
             } else {
                 console.log('🖥️ Desktop detected, using standard loading...');
-                await loadSDKDesktop();
+                await loadMiniAppSDKDesktop();
             }
             
         } catch (error) {
-            console.error('⚠️ Failed to load Frame SDK:', error);
+            console.error('⚠️ Failed to load MiniApp SDK:', error);
             console.log('🔄 Falling back to mock SDK...');
-            sdk = mockSdk;
+            window.sdk = mockSdk;
             await initApp();
         }
     } else {
         console.log('🏠 Local environment detected, using mock SDK');
-        sdk = mockSdk;
+        window.sdk = mockSdk;
         await initApp();
     }
 }
 
 /**
- * Mobile-optimized SDK loading
- * 
- * NEW FUNCTION: Created specifically for mobile devices
- * 
- * CHANGES MADE:
- * 1. Uses unpkg CDN as primary source (more reliable on mobile)
- * 2. Adds async and defer attributes for better mobile performance
- * 3. Implements mobile-specific error handling
- * 4. Provides immediate fallback to alternative CDN
- * 5. FIXED: Now calls ready() after SDK loads
+ * Mobile MiniApp SDK loading - FIXED: Use correct SDK and detection
  */
-async function loadSDKMobile() {
-    console.log('📱 Loading SDK for mobile...');
+async function loadMiniAppSDKMobile() {
+    console.log('📱 Loading MiniApp SDK for mobile...');
     
     try {
-        // MOBILE-OPTIMIZED LOADING:
-        // Uses unpkg CDN which is more reliable on mobile devices
-        // Adds async and defer for better mobile performance
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/@farcaster/frame-sdk@latest/dist/index.min.js';
-        script.async = true;  // Load asynchronously for better mobile performance
-        script.defer = true;  // Defer execution until page is parsed
-        
-        script.onload = async () => {
-            console.log('✅ Mobile SDK loaded via unpkg');
-            if (window.frameSDK) {
-                sdk = window.frameSDK;
-                await initApp(); // This will call ready()
-            } else {
-                console.log('⚠️ frameSDK not found, trying alternative...');
-                loadSDKMobileFallback();
-            }
-        };
-        
-        script.onerror = () => {
-            console.log('⚠️ Unpkg failed, trying fallback...');
-            loadSDKMobileFallback();
-        };
-        
-        document.head.appendChild(script);
-        
-    } catch (error) {
-        console.error('❌ Mobile SDK loading failed:', error);
-        loadSDKMobileFallback();
-    }
-}
-
-/**
- * Mobile fallback loading
- * 
- * NEW FUNCTION: Secondary fallback specifically for mobile devices
- * 
- * CHANGES MADE:
- * 1. Uses jsDelivr CDN as secondary source
- * 2. Implements mobile-specific error handling
- * 3. Provides graceful degradation to mock SDK
- * 4. Ensures app continues to function even if SDK fails
- * 5. FIXED: Now calls ready() after SDK loads
- */
-async function loadSDKMobileFallback() {
-    console.log('📱 Trying mobile fallback loading...');
-    
-    try {
-        // MOBILE FALLBACK STRATEGY:
-        // Uses jsDelivr CDN as secondary source for mobile
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@farcaster/frame-sdk@latest/dist/index.min.js';
-        script.async = true;  // Keep async for mobile performance
-        
-        script.onload = async () => {
-            console.log('✅ Mobile fallback SDK loaded via jsDelivr');
-            if (window.frameSDK) {
-                sdk = window.frameSDK;
-                await initApp(); // This will call ready()
-            } else {
-                console.log('⚠️ Still no SDK, using mock...');
-                sdk = mockSdk;
-                await initApp(); // This will call ready()
-            }
-        };
-        
-        script.onerror = async () => {
-            console.log('⚠️ All mobile SDK loading failed, using mock...');
-            sdk = mockSdk;
-            await initApp(); // This will call ready()
-        };
-        
-        document.head.appendChild(script);
-        
-    } catch (error) {
-        console.error('❌ Mobile fallback failed:', error);
-        sdk = mockSdk;
-        await initApp();
-    }
-}
-
-/**
- * Desktop SDK loading (original method)
- * 
- * REFACTORED: Separated from mobile loading for better organization
- * 
- * CHANGES MADE:
- * 1. Extracted desktop loading into separate function
- * 2. Maintains original CDN + ESM fallback strategy
- * 3. Keeps desktop-specific error handling
- * 4. Provides clear separation between mobile and desktop approaches
- * 5. FIXED: Now calls ready() after SDK loads
- */
-async function loadSDKDesktop() {
-    console.log('🖥️ Loading SDK for desktop...');
-    
-    try {
-        // DESKTOP LOADING STRATEGY:
-        // Uses original CDN approach with ESM fallback
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@farcaster/frame-sdk/dist/index.min.js';
-        script.onload = async () => {
-            if (window.frameSDK) {
-                sdk = window.frameSDK;
-                console.log('✅ Frame SDK loaded via CDN');
-                await initApp(); // This will call ready()
-            } else {
-                // Fallback to ESM import for desktop
-                loadSDKESM();
-            }
-        };
-        script.onerror = () => {
-            console.log('⚠️ CDN failed, trying ESM import...');
-            loadSDKESM();
-        };
-        document.head.appendChild(script);
-        
-    } catch (error) {
-        console.error('⚠️ Failed to load Frame SDK:', error);
-        console.log('🔄 Falling back to mock SDK...');
-        sdk = mockSdk;
-        await initApp();
-    }
-}
-
-/**
- * Fallback ESM loading
- * 
- * ORIGINAL FUNCTION: Maintained for desktop compatibility
- * 
- * PURPOSE:
- * - Provides ESM import fallback for desktop environments
- * - Handles module loading in environments that support ES modules
- * - Includes timeout mechanism to prevent infinite waiting
- * - FIXED: Now calls ready() after SDK loads
- */
-async function loadSDKESM() {
-    try {
+        // Method 1: Try ESM import first (more reliable for MiniApp SDK)
         const script = document.createElement('script');
         script.type = 'module';
         script.textContent = `
             try {
-                const { sdk } = await import('https://esm.sh/@farcaster/frame-sdk');
-                window.farcasterSDK = sdk;
-                window.sdkLoaded = true;
-                console.log('✅ Frame SDK imported via ESM');
+                console.log('📱 Attempting MiniApp SDK ESM import...');
+                const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+                window.miniappSDK = sdk;
+                window.miniappSDKLoaded = true;
+                console.log('✅ MiniApp SDK imported via ESM');
+                console.log('🔍 SDK object:', window.miniappSDK);
             } catch (error) {
-                console.error('❌ Frame SDK ESM import failed:', error);
-                window.sdkLoaded = false;
+                console.error('❌ MiniApp SDK ESM import failed:', error);
+                window.miniappSDKLoaded = false;
             }
         `;
         document.head.appendChild(script);
         
-        // TIMEOUT MECHANISM:
-        // Prevents infinite waiting if ESM import fails
+        // Wait for SDK to load
         let attempts = 0;
-        const maxAttempts = 20;
+        const maxAttempts = 30; // Give it more time
         
         while (attempts < maxAttempts) {
-            if (window.farcasterSDK && window.sdkLoaded) {
-                sdk = window.farcasterSDK;
-                console.log('✅ Farcaster Frame SDK loaded via ESM');
-                break;
+            if (window.miniappSDK && window.miniappSDKLoaded) {
+                window.sdk = window.miniappSDK; // Store in global
+                console.log('✅ MiniApp SDK loaded and stored in window.sdk');
+                console.log('🔍 SDK verification:', {
+                    sdkExists: !!window.sdk,
+                    hasActions: !!(window.sdk?.actions),
+                    hasReady: !!(window.sdk?.actions?.ready),
+                    readyType: typeof window.sdk?.actions?.ready
+                });
+                await initApp();
+                return;
             }
             
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 200));
             attempts++;
         }
         
-        if (!window.farcasterSDK || !window.sdkLoaded) {
-            throw new Error('ESM import failed');
-        }
-        
-        await initApp(); // This will call ready()
+        // If ESM failed, try CDN fallback
+        console.log('⚠️ ESM import timed out, trying CDN fallback...');
+        await loadMiniAppSDKMobileFallback();
         
     } catch (error) {
-        console.error('⚠️ ESM fallback failed:', error);
-        sdk = mockSdk;
+        console.error('❌ Mobile MiniApp SDK loading failed:', error);
+        await loadMiniAppSDKMobileFallback();
+    }
+}
+
+/**
+ * Mobile MiniApp SDK fallback - FIXED: Try alternative approach
+ */
+async function loadMiniAppSDKMobileFallback() {
+    console.log('📱 Trying MiniApp SDK mobile fallback...');
+    
+    try {
+        // Try unpkg CDN
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@farcaster/miniapp-sdk@latest/dist/index.min.js';
+        script.async = true;
+        
+        script.onload = async () => {
+            console.log('✅ MiniApp SDK loaded via unpkg CDN');
+            
+            // Check multiple possible locations for the SDK
+            const possibleSDKs = [
+                window.farcasterMiniAppSDK,
+                window.miniAppSDK,
+                window.sdk,
+                window.FarcasterSDK
+            ];
+            
+            let foundSDK = null;
+            for (const possibleSDK of possibleSDKs) {
+                if (possibleSDK && possibleSDK.actions && possibleSDK.actions.ready) {
+                    foundSDK = possibleSDK;
+                    break;
+                }
+            }
+            
+            if (foundSDK) {
+                window.sdk = foundSDK;
+                console.log('✅ Found and stored MiniApp SDK in window.sdk');
+                await initApp();
+            } else {
+                console.log('⚠️ MiniApp SDK loaded but not found in expected locations, using mock...');
+                window.sdk = mockSdk;
+                await initApp();
+            }
+        };
+        
+        script.onerror = async () => {
+            console.log('⚠️ All MiniApp SDK loading failed, using mock...');
+            window.sdk = mockSdk;
+            await initApp();
+        };
+        
+        document.head.appendChild(script);
+        
+    } catch (error) {
+        console.error('❌ MiniApp SDK mobile fallback failed:', error);
+        window.sdk = mockSdk;
+        await initApp();
+    }
+}
+
+/**
+ * Desktop MiniApp SDK loading - FIXED: Use modern SDK
+ */
+async function loadMiniAppSDKDesktop() {
+    console.log('🖥️ Loading MiniApp SDK for desktop...');
+    
+    try {
+        // Try ESM import first
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.textContent = `
+            try {
+                console.log('🖥️ Attempting MiniApp SDK ESM import...');
+                const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+                window.miniappSDK = sdk;
+                window.miniappSDKLoaded = true;
+                console.log('✅ MiniApp SDK imported via ESM (desktop)');
+            } catch (error) {
+                console.error('❌ MiniApp SDK ESM import failed (desktop):', error);
+                window.miniappSDKLoaded = false;
+            }
+        `;
+        document.head.appendChild(script);
+        
+        // Wait for SDK to load
+        let attempts = 0;
+        const maxAttempts = 30;
+        
+        while (attempts < maxAttempts) {
+            if (window.miniappSDK && window.miniappSDKLoaded) {
+                window.sdk = window.miniappSDK;
+                console.log('✅ MiniApp SDK loaded via ESM and stored in window.sdk (desktop)');
+                await initApp();
+                return;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            attempts++;
+        }
+        
+        // Fallback to CDN
+        console.log('⚠️ ESM timed out, trying CDN fallback (desktop)...');
+        await loadMiniAppSDKDesktopFallback();
+        
+    } catch (error) {
+        console.error('⚠️ Failed to load MiniApp SDK (desktop):', error);
+        await loadMiniAppSDKDesktopFallback();
+    }
+}
+
+/**
+ * Desktop MiniApp SDK fallback
+ */
+async function loadMiniAppSDKDesktopFallback() {
+    console.log('🖥️ Trying MiniApp SDK desktop fallback...');
+    
+    try {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@farcaster/miniapp-sdk@latest/dist/index.min.js';
+        
+        script.onload = async () => {
+            console.log('✅ MiniApp SDK loaded via jsDelivr CDN (desktop)');
+            
+            // Check for SDK in various locations
+            const possibleSDKs = [
+                window.farcasterMiniAppSDK,
+                window.miniAppSDK,
+                window.sdk,
+                window.FarcasterSDK
+            ];
+            
+            let foundSDK = null;
+            for (const possibleSDK of possibleSDKs) {
+                if (possibleSDK && possibleSDK.actions && possibleSDK.actions.ready) {
+                    foundSDK = possibleSDK;
+                    break;
+                }
+            }
+            
+            if (foundSDK) {
+                window.sdk = foundSDK;
+                console.log('✅ Found and stored MiniApp SDK in window.sdk (desktop)');
+                await initApp();
+            } else {
+                console.log('⚠️ MiniApp SDK loaded but not found, using mock...');
+                window.sdk = mockSdk;
+                await initApp();
+            }
+        };
+        
+        script.onerror = () => {
+            console.log('⚠️ All MiniApp SDK loading failed (desktop), using mock...');
+            window.sdk = mockSdk;
+            initApp();
+        };
+        
+        document.head.appendChild(script);
+        
+    } catch (error) {
+        console.error('⚠️ MiniApp SDK desktop fallback failed:', error);
+        window.sdk = mockSdk;
         await initApp();
     }
 }
