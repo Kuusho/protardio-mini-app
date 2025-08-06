@@ -1,67 +1,94 @@
-// js/app.js - AGGRESSIVE DEBUGGING VERSION
+// js/app.js - FIXED: Better SDK validation
 
-// Add this at the very top to catch everything
-console.log('🚀 APP.JS LOADED - Starting aggressive debugging');
+console.log('🚀 APP.JS LOADED - Using real MiniApp SDK');
 
-// Track if initApp has been called
+// Track initialization
 window.initAppCalled = false;
 window.readyCalled = false;
 
-// Initialize the app and call ready() - WITH AGGRESSIVE DEBUGGING
+// Initialize the app and call ready() - FIXED: Better validation
 async function initApp() {
     console.log('🎭 =================================');
-    console.log('🎭 INITAPP() CALLED - STARTING DEBUG');
+    console.log('🎭 INITAPP() CALLED - CHECKING REAL SDK');
     console.log('🎭 =================================');
     
     window.initAppCalled = true;
     
     try {
-        // STEP 1: Check what SDK we have
-        console.log('🔍 SDK Investigation:', {
-            sdkExists: !!sdk,
-            sdkType: typeof sdk,
-            hasActions: !!(sdk?.actions),
-            hasReady: !!(sdk?.actions?.ready),
-            readyType: typeof sdk?.actions?.ready,
-            isMockSDK: sdk === mockSdk
+        // STEP 1: Detailed SDK investigation
+        console.log('🔍 Detailed SDK Investigation:', {
+            windowSdkExists: !!window.sdk,
+            sdkType: typeof window.sdk,
+            sdkConstructor: window.sdk?.constructor?.name,
+            hasActions: !!(window.sdk?.actions),
+            actionsType: typeof window.sdk?.actions,
+            hasReady: !!(window.sdk?.actions?.ready),
+            readyType: typeof window.sdk?.actions?.ready,
+            readyIsFunction: typeof window.sdk?.actions?.ready === 'function',
+            isMockSDK: window.sdk === mockSdk,
+            // Let's see what the SDK actually contains
+            sdkKeys: window.sdk ? Object.keys(window.sdk) : [],
+            actionsKeys: window.sdk?.actions ? Object.keys(window.sdk.actions) : []
         });
         
-        // STEP 2: Validate SDK before proceeding
-        if (!sdk || !sdk.actions || typeof sdk.actions.ready !== 'function') {
-            console.log('❌ SDK validation failed, forcing mock SDK');
-            sdk = mockSdk;
+        // STEP 2: More flexible SDK validation
+        let sdkIsValid = false;
+        let sdkValidationReason = '';
+        
+        if (!window.sdk) {
+            sdkValidationReason = 'No window.sdk';
+        } else if (typeof window.sdk !== 'object') {
+            sdkValidationReason = 'window.sdk is not an object';
+        } else if (!window.sdk.actions) {
+            sdkValidationReason = 'No actions property';
+        } else if (typeof window.sdk.actions !== 'object') {
+            sdkValidationReason = 'actions is not an object';
+        } else if (!window.sdk.actions.ready) {
+            sdkValidationReason = 'No ready property';
+        } else if (typeof window.sdk.actions.ready !== 'function') {
+            sdkValidationReason = `ready is not a function (it's ${typeof window.sdk.actions.ready})`;
+        } else {
+            sdkIsValid = true;
+            sdkValidationReason = 'SDK is valid';
+        }
+        
+        console.log('🔍 SDK Validation Result:', {
+            isValid: sdkIsValid,
+            reason: sdkValidationReason
+        });
+        
+        // STEP 3: Use the SDK we have or force mock
+        if (!sdkIsValid) {
+            console.log('❌ SDK validation failed:', sdkValidationReason);
+            console.log('🔧 Forcing mock SDK...');
+            window.sdk = mockSdk;
+        } else {
+            console.log('✅ Using real MiniApp SDK!');
         }
 
-        // STEP 3: AGGRESSIVE READY() CALLS
+        // STEP 4: Call ready() with detailed logging
         console.log('📞 =================================');
-        console.log('📞 ATTEMPTING TO CALL READY()');
+        console.log('📞 CALLING READY() ON', sdkIsValid ? 'REAL SDK' : 'MOCK SDK');
         console.log('📞 =================================');
         
-        console.log('📞 Ready function details:', {
-            readyFunction: sdk.actions.ready.toString().substring(0, 200),
-            isAsync: sdk.actions.ready.constructor.name === 'AsyncFunction'
+        console.log('📞 Final ready() function check:', {
+            readyExists: !!(window.sdk?.actions?.ready),
+            readyType: typeof window.sdk?.actions?.ready,
+            readyToString: window.sdk?.actions?.ready?.toString?.()?.substring(0, 100)
         });
         
-        // Try multiple ready() approaches
         const readyStrategies = [
             {
                 name: 'With disableNativeGestures',
-                call: () => sdk.actions.ready({ disableNativeGestures: true })
+                call: () => window.sdk.actions.ready({ disableNativeGestures: true })
             },
             {
                 name: 'With empty options',
-                call: () => sdk.actions.ready({})
+                call: () => window.sdk.actions.ready({})
             },
             {
                 name: 'Without options',
-                call: () => sdk.actions.ready()
-            },
-            {
-                name: 'Force ready call',
-                call: () => {
-                    console.log('🆘 FORCING READY CALL');
-                    return sdk.actions.ready();
-                }
+                call: () => window.sdk.actions.ready()
             }
         ];
 
@@ -75,6 +102,7 @@ async function initApp() {
                 const result = await strategy.call();
                 console.log(`✅ READY() SUCCESS with strategy: ${strategy.name}`);
                 console.log('✅ Ready result:', result);
+                console.log('✅ Called on:', sdkIsValid ? 'REAL MiniApp SDK' : 'Mock SDK');
                 window.readyCalled = true;
                 readySuccess = true;
                 break;
@@ -82,37 +110,33 @@ async function initApp() {
                 console.log(`❌ Strategy ${i + 1} failed:`, {
                     strategyName: strategy.name,
                     errorName: error.name,
-                    errorMessage: error.message,
-                    errorStack: error.stack?.substring(0, 300)
+                    errorMessage: error.message
                 });
-                
-                // Continue to next strategy
                 continue;
             }
         }
         
         if (!readySuccess) {
             console.log('💀 ALL READY() STRATEGIES FAILED');
-            console.log('💀 But continuing with app initialization...');
         }
         
-        // STEP 4: Initialize UI
+        // STEP 5: Initialize UI
         console.log('🎯 Initializing UI...');
         await initializeUI();
         
         console.log('🎉 =================================');
         console.log('🎉 INITAPP() COMPLETE');
         console.log('🎉 Ready called:', window.readyCalled);
+        console.log('🎉 Using SDK:', sdkIsValid ? 'REAL MiniApp SDK' : 'Mock SDK');
+        console.log('🎉 Window.sdk exists:', !!window.sdk);
         console.log('🎉 =================================');
         
     } catch (error) {
         console.log('💥 CRITICAL ERROR IN INITAPP:', {
             errorName: error.name,
-            errorMessage: error.message,
-            errorStack: error.stack
+            errorMessage: error.message
         });
         
-        // Force UI initialization even on error
         try {
             await initializeUI();
         } catch (uiError) {
@@ -125,8 +149,6 @@ async function initApp() {
 async function initializeUI() {
     console.log('🎯 UI INITIALIZATION STARTING...');
     
-    // Load saved state
-    debugLog('📂 Loading saved state from localStorage');
     const stored = localStorage.getItem('lastProtardioView');
     if (stored) {
         lastViewTime = new Date(stored);
@@ -140,19 +162,23 @@ async function initializeUI() {
     console.log('✅ UI INITIALIZATION COMPLETE');
 }
 
-// FORCE CHECK EVERY 2 SECONDS
+// Status check with more detail
 setInterval(() => {
-    console.log('⏰ Status Check:', {
+    const status = {
         initAppCalled: window.initAppCalled,
         readyCalled: window.readyCalled,
         sdkExists: !!window.sdk,
+        sdkType: typeof window.sdk,
+        isMockSDK: window.sdk === mockSdk,
+        hasActions: !!(window.sdk?.actions),
+        hasReady: !!(window.sdk?.actions?.ready),
         currentTime: new Date().toISOString()
-    });
-}, 2000);
+    };
+    
+    console.log('⏰ Enhanced Status Check:', status);
+}, 3000); // Reduced frequency
 
-// Start the app initialization when DOM is ready
-console.log('📄 Setting up DOM load listeners...');
-
+// DOM load handling
 if (document.readyState === 'loading') {
     console.log('📄 DOM still loading, adding event listener');
     document.addEventListener('DOMContentLoaded', () => {
@@ -164,43 +190,26 @@ if (document.readyState === 'loading') {
     loadSDK();
 }
 
-// Also force call after 3 seconds if nothing happened
+// Force check after 5 seconds if needed
 setTimeout(() => {
-    console.log('⏰ 3-second timeout check:', {
+    console.log('⏰ 5-second timeout check:', {
         initAppCalled: window.initAppCalled,
-        readyCalled: window.readyCalled
+        readyCalled: window.readyCalled,
+        sdkExists: !!window.sdk,
+        isMockSDK: window.sdk === mockSdk
     });
     
     if (!window.initAppCalled) {
         console.log('🚨 INITAPP NEVER CALLED - FORCING NOW');
-        console.log('🚨 Current SDK:', window.sdk);
-        
         if (!window.sdk) {
             console.log('🚨 NO SDK - SETTING MOCK');
             window.sdk = mockSdk;
         }
-        
         initApp();
     }
-    
-    if (!window.readyCalled) {
-        console.log('🚨 READY NEVER CALLED - FORCING DIRECT CALL');
-        try {
-            if (window.sdk && window.sdk.actions && window.sdk.actions.ready) {
-                window.sdk.actions.ready().then(() => {
-                    console.log('🚨 FORCED READY() SUCCESS');
-                    window.readyCalled = true;
-                }).catch(error => {
-                    console.log('🚨 FORCED READY() FAILED:', error.message);
-                });
-            }
-        } catch (error) {
-            console.log('🚨 FORCED READY() ATTEMPT CRASHED:', error.message);
-        }
-    }
-}, 3000);
+}, 5000);
 
-// Rest of your functions remain the same...
+// App functions - Use window.sdk
 window.viewRandomProtardio = async function() {
     console.log('🎲 VIEW RANDOM PROTARDIO CALLED');
     
@@ -259,7 +268,6 @@ window.viewRandomProtardio = async function() {
                 statusEl.innerHTML = `
                     <div>❌ <strong>Load Failed</strong></div>
                     <p>Could not load Protardio #${currentImageIndex}. Try again?</p>
-                    <p style="font-size: 0.8rem; opacity: 0.7;">Make sure the protardios folder is accessible</p>
                 `;
                 statusEl.style.display = 'block';
                 
@@ -284,13 +292,13 @@ window.viewRandomProtardio = async function() {
 };
 
 window.shareApp = async function() {
-    console.log('📤 SHARE APP CALLED');
+    console.log('📤 SHARE APP CALLED - SDK type:', window.sdk === mockSdk ? 'Mock' : 'Real');
     try {
         const shareBtn = document.getElementById('shareBtn');
         shareBtn.disabled = true;
         shareBtn.textContent = '📤 Sharing...';
         
-        await sdk.actions.composeCast({
+        await window.sdk.actions.composeCast({
             text: `Pushing 🅿 with preview protardio ${currentImageIndex || '???'}, check it out (or not)\n\nprotardio.`,
             embeds: [window.location.href]
         });
@@ -318,4 +326,4 @@ window.resetForTesting = function() {
     updateDebugInfo();
 };
 
-console.log('✅ APP.JS SETUP COMPLETE');
+console.log('✅ APP.JS SETUP COMPLETE - ENHANCED SDK VALIDATION');
