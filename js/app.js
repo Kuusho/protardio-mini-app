@@ -1,61 +1,130 @@
-// js/app.js - UPDATED with proper ready() call
+// js/app.js - AGGRESSIVE DEBUGGING VERSION
 
-// Initialize the app and call ready()
+// Add this at the very top to catch everything
+console.log('🚀 APP.JS LOADED - Starting aggressive debugging');
+
+// Track if initApp has been called
+window.initAppCalled = false;
+window.readyCalled = false;
+
+// Initialize the app and call ready() - WITH AGGRESSIVE DEBUGGING
 async function initApp() {
-    debugLog('🎭 Protardio Gallery initializing...');
+    console.log('🎭 =================================');
+    console.log('🎭 INITAPP() CALLED - STARTING DEBUG');
+    console.log('🎭 =================================');
+    
+    window.initAppCalled = true;
     
     try {
-        // STEP 1: Validate SDK before proceeding
+        // STEP 1: Check what SDK we have
+        console.log('🔍 SDK Investigation:', {
+            sdkExists: !!sdk,
+            sdkType: typeof sdk,
+            hasActions: !!(sdk?.actions),
+            hasReady: !!(sdk?.actions?.ready),
+            readyType: typeof sdk?.actions?.ready,
+            isMockSDK: sdk === mockSdk
+        });
+        
+        // STEP 2: Validate SDK before proceeding
         if (!sdk || !sdk.actions || typeof sdk.actions.ready !== 'function') {
-            debugLog('❌ SDK validation failed, using mock', {
-                sdkExists: !!sdk,
-                hasActions: !!(sdk?.actions),
-                hasReady: !!(sdk?.actions?.ready),
-                readyType: typeof sdk?.actions?.ready
-            });
+            console.log('❌ SDK validation failed, forcing mock SDK');
             sdk = mockSdk;
         }
 
-        // STEP 2: CRITICAL - Call ready() to hide splash screen
-        debugLog('📞 Calling sdk.actions.ready() to hide splash screen...');
+        // STEP 3: AGGRESSIVE READY() CALLS
+        console.log('📞 =================================');
+        console.log('📞 ATTEMPTING TO CALL READY()');
+        console.log('📞 =================================');
         
-        try {
-            await sdk.actions.ready({
-                disableNativeGestures: true // Prevent accidental app closes on mobile
-            });
-            debugLog('✅ SDK ready() called successfully - splash screen should be hidden');
-            
-        } catch (readyError) {
-            debugLog('❌ Ready call failed, trying without options...', readyError.message);
+        console.log('📞 Ready function details:', {
+            readyFunction: sdk.actions.ready.toString().substring(0, 200),
+            isAsync: sdk.actions.ready.constructor.name === 'AsyncFunction'
+        });
+        
+        // Try multiple ready() approaches
+        const readyStrategies = [
+            {
+                name: 'With disableNativeGestures',
+                call: () => sdk.actions.ready({ disableNativeGestures: true })
+            },
+            {
+                name: 'With empty options',
+                call: () => sdk.actions.ready({})
+            },
+            {
+                name: 'Without options',
+                call: () => sdk.actions.ready()
+            },
+            {
+                name: 'Force ready call',
+                call: () => {
+                    console.log('🆘 FORCING READY CALL');
+                    return sdk.actions.ready();
+                }
+            }
+        ];
+
+        let readySuccess = false;
+        
+        for (let i = 0; i < readyStrategies.length; i++) {
+            const strategy = readyStrategies[i];
+            console.log(`📞 Trying strategy ${i + 1}: ${strategy.name}`);
             
             try {
-                // Fallback: try without options
-                await sdk.actions.ready();
-                debugLog('✅ Ready() fallback successful');
-            } catch (fallbackError) {
-                debugLog('❌ All ready() attempts failed:', fallbackError.message);
-                // Continue anyway - app will still work, just might show splash longer
+                const result = await strategy.call();
+                console.log(`✅ READY() SUCCESS with strategy: ${strategy.name}`);
+                console.log('✅ Ready result:', result);
+                window.readyCalled = true;
+                readySuccess = true;
+                break;
+            } catch (error) {
+                console.log(`❌ Strategy ${i + 1} failed:`, {
+                    strategyName: strategy.name,
+                    errorName: error.name,
+                    errorMessage: error.message,
+                    errorStack: error.stack?.substring(0, 300)
+                });
+                
+                // Continue to next strategy
+                continue;
             }
         }
         
-        // STEP 3: Initialize UI after SDK is ready
+        if (!readySuccess) {
+            console.log('💀 ALL READY() STRATEGIES FAILED');
+            console.log('💀 But continuing with app initialization...');
+        }
+        
+        // STEP 4: Initialize UI
+        console.log('🎯 Initializing UI...');
         await initializeUI();
         
-        debugLog('🎉 Protardio Gallery initialization complete!');
+        console.log('🎉 =================================');
+        console.log('🎉 INITAPP() COMPLETE');
+        console.log('🎉 Ready called:', window.readyCalled);
+        console.log('🎉 =================================');
         
     } catch (error) {
-        debugLog('💥 Critical error in initApp', {
+        console.log('💥 CRITICAL ERROR IN INITAPP:', {
             errorName: error.name,
-            errorMessage: error.message
+            errorMessage: error.message,
+            errorStack: error.stack
         });
         
-        // Ensure UI still works even if SDK fails
-        await initializeUI();
+        // Force UI initialization even on error
+        try {
+            await initializeUI();
+        } catch (uiError) {
+            console.log('💥 UI INIT ALSO FAILED:', uiError.message);
+        }
     }
 }
 
 // Initialize UI components and load saved state
 async function initializeUI() {
+    console.log('🎯 UI INITIALIZATION STARTING...');
+    
     // Load saved state
     debugLog('📂 Loading saved state from localStorage');
     const stored = localStorage.getItem('lastProtardioView');
@@ -68,22 +137,73 @@ async function initializeUI() {
     }
     
     updateDebugInfo();
-    debugLog('🎯 UI initialization complete');
+    console.log('✅ UI INITIALIZATION COMPLETE');
 }
+
+// FORCE CHECK EVERY 2 SECONDS
+setInterval(() => {
+    console.log('⏰ Status Check:', {
+        initAppCalled: window.initAppCalled,
+        readyCalled: window.readyCalled,
+        sdkExists: !!window.sdk,
+        currentTime: new Date().toISOString()
+    });
+}, 2000);
 
 // Start the app initialization when DOM is ready
+console.log('📄 Setting up DOM load listeners...');
+
 if (document.readyState === 'loading') {
+    console.log('📄 DOM still loading, adding event listener');
     document.addEventListener('DOMContentLoaded', () => {
-        debugLog('📄 DOM loaded, starting SDK loading');
-        loadSDK(); // This will eventually call initApp() which calls ready()
+        console.log('📄 DOM LOADED EVENT FIRED - calling loadSDK()');
+        loadSDK();
     });
 } else {
-    debugLog('📄 DOM already loaded, starting SDK loading');
-    loadSDK(); // This will eventually call initApp() which calls ready()
+    console.log('📄 DOM already loaded, calling loadSDK() immediately');
+    loadSDK();
 }
 
-// FIXED: View random protardio - now uses TOTAL_IMAGES instead of hardcoded 1000
+// Also force call after 3 seconds if nothing happened
+setTimeout(() => {
+    console.log('⏰ 3-second timeout check:', {
+        initAppCalled: window.initAppCalled,
+        readyCalled: window.readyCalled
+    });
+    
+    if (!window.initAppCalled) {
+        console.log('🚨 INITAPP NEVER CALLED - FORCING NOW');
+        console.log('🚨 Current SDK:', window.sdk);
+        
+        if (!window.sdk) {
+            console.log('🚨 NO SDK - SETTING MOCK');
+            window.sdk = mockSdk;
+        }
+        
+        initApp();
+    }
+    
+    if (!window.readyCalled) {
+        console.log('🚨 READY NEVER CALLED - FORCING DIRECT CALL');
+        try {
+            if (window.sdk && window.sdk.actions && window.sdk.actions.ready) {
+                window.sdk.actions.ready().then(() => {
+                    console.log('🚨 FORCED READY() SUCCESS');
+                    window.readyCalled = true;
+                }).catch(error => {
+                    console.log('🚨 FORCED READY() FAILED:', error.message);
+                });
+            }
+        } catch (error) {
+            console.log('🚨 FORCED READY() ATTEMPT CRASHED:', error.message);
+        }
+    }
+}, 3000);
+
+// Rest of your functions remain the same...
 window.viewRandomProtardio = async function() {
+    console.log('🎲 VIEW RANDOM PROTARDIO CALLED');
+    
     if (checkCooldownStatus()) return;
     
     const container = document.getElementById('imageContainer');
@@ -96,7 +216,6 @@ window.viewRandomProtardio = async function() {
     
     setTimeout(() => {
         try {
-            // FIXED: Now uses TOTAL_IMAGES (2000) instead of hardcoded 1000
             currentImageIndex = Math.floor(Math.random() * TOTAL_IMAGES) + 1;
             const imagePath = generateProtardioPath(currentImageIndex);
             
@@ -164,8 +283,8 @@ window.viewRandomProtardio = async function() {
     }, 800);
 };
 
-// Share app function
 window.shareApp = async function() {
+    console.log('📤 SHARE APP CALLED');
     try {
         const shareBtn = document.getElementById('shareBtn');
         shareBtn.disabled = true;
@@ -186,8 +305,8 @@ window.shareApp = async function() {
     }
 };
 
-// Reset for testing
 window.resetForTesting = function() {
+    console.log('🔄 RESET FOR TESTING CALLED');
     resetTimer();
     const container = document.getElementById('imageContainer');
     const statusEl = document.getElementById('statusMessage');
@@ -198,3 +317,5 @@ window.resetForTesting = function() {
     currentImageIndex = null;
     updateDebugInfo();
 };
+
+console.log('✅ APP.JS SETUP COMPLETE');
