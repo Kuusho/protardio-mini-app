@@ -1,50 +1,11 @@
-// Start loading SDK when page loads (with conflict protection)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        debugLog('📄 DOM loaded, starting SDK loading with conflict protection');
-        
-        // Protect against ethereum conflicts before loading SDK
-        const originalEthereum = window.ethereum;
-        debugLog('🛡️ Ethereum conflict protection active', {
-            hasOriginalEthereum: !!originalEthereum,
-            ethereumType: typeof originalEthereum
-        });
-        
-        loadSDK();
-    });
-} else {
-    debugLog('📄 DOM already loaded, starting SDK loading immediately');
-    
-    // Protect against ethereum conflicts
-    const originalEthereum = window.ethereum;
-    debugLog('🛡️ Ethereum conflict protection active', {
-        hasOriginalEthereum: !!originalEthereum,
-        ethereumType: typeof originalEthereum
-    });
-    
-    loadSDK();
-}
+// js/app.js - UPDATED with proper ready() call
 
-// Initialize the app and call ready (with comprehensive logging and conflict protection)
+// Initialize the app and call ready()
 async function initApp() {
     debugLog('🎭 Protardio Gallery initializing...');
     
-    // Initialize variables in proper scope
-    let ethereumConflictDetected = false;
-    const originalEthereum = window.ethereum;
-    
-    // Check for ethereum conflicts before proceeding
-    debugLog('Pre-init environment check', {
-        hasEthereum: !!window.ethereum,
-        ethereumWritable: window.ethereum ? Object.getOwnPropertyDescriptor(window, 'ethereum')?.writable : 'N/A',
-        hasSdk: !!sdk,
-        sdkType: sdk === mockSdk ? 'Mock' : 'Real',
-        sdkHasActions: !!(sdk?.actions),
-        sdkHasReady: !!(sdk?.actions?.ready)
-    });
-    
     try {
-        // Ensure we have a valid SDK
+        // STEP 1: Validate SDK before proceeding
         if (!sdk || !sdk.actions || typeof sdk.actions.ready !== 'function') {
             debugLog('❌ SDK validation failed, using mock', {
                 sdkExists: !!sdk,
@@ -54,88 +15,47 @@ async function initApp() {
             });
             sdk = mockSdk;
         }
-        
-        debugLog('📞 About to call sdk.actions.ready() with mobile optimizations...');
+
+        // STEP 2: CRITICAL - Call ready() to hide splash screen
+        debugLog('📞 Calling sdk.actions.ready() to hide splash screen...');
         
         try {
-            // CRITICAL FIX #2: Call ready() with mobile optimizations
-            const readyResult = await sdk.actions.ready({
-                // CRITICAL: Disable native gestures to prevent accidental app closes on mobile
-                disableNativeGestures: true
+            await sdk.actions.ready({
+                disableNativeGestures: true // Prevent accidental app closes on mobile
             });
-            debugLog('✅ SDK ready() called successfully with mobile optimizations', readyResult);
+            debugLog('✅ SDK ready() called successfully - splash screen should be hidden');
             
         } catch (readyError) {
-            debugLog('❌ Ready call failed, analyzing error', {
-                errorName: readyError.name,
-                errorMessage: readyError.message,
-                errorStack: readyError.stack?.substring(0, 200)
-            });
+            debugLog('❌ Ready call failed, trying without options...', readyError.message);
             
-            // Check if this is an ethereum conflict
-            if (readyError.message?.includes('ethereum') || readyError.message?.includes('redefine')) {
-                ethereumConflictDetected = true;
-                debugLog('🚨 Ethereum conflict detected during ready() call');
-            }
-            
-            // Try calling ready again as fallback (mobile retry logic)
             try {
-                debugLog('🔄 Retrying ready() call with basic options...');
-                await sdk.actions.ready({
-                    disableNativeGestures: true // Still try to disable gestures
-                });
-                debugLog('✅ Ready() retry successful');
-            } catch (retryError) {
-                debugLog('❌ Ready() retry also failed', {
-                    errorName: retryError.name,
-                    errorMessage: retryError.message
-                });
-                
-                // Last resort - try without any options
-                try {
-                    debugLog('🆘 Last resort: calling ready() without options...');
-                    await sdk.actions.ready();
-                    debugLog('✅ Basic ready() call succeeded');
-                } catch (finalError) {
-                    debugLog('💀 All ready() attempts failed', {
-                        errorName: finalError.name,
-                        errorMessage: finalError.message,
-                        stackTrace: finalError.stack?.substring(0, 300)
-                    });
-                    // App will still function with mock SDK, just warn user
-                    debugLog('⚠️ App running without proper SDK connection');
-                }
+                // Fallback: try without options
+                await sdk.actions.ready();
+                debugLog('✅ Ready() fallback successful');
+            } catch (fallbackError) {
+                debugLog('❌ All ready() attempts failed:', fallbackError.message);
+                // Continue anyway - app will still work, just might show splash longer
             }
         }
         
-        // Small delay to ensure ready() is processed
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // STEP 3: Initialize UI after SDK is ready
+        await initializeUI();
         
-        if (ethereumConflictDetected) {
-            debugLog('🔧 Attempting to resolve ethereum conflicts');
-            // Try to restore original ethereum if it was modified
-            if (originalEthereum && window.ethereum !== originalEthereum) {
-                try {
-                    Object.defineProperty(window, 'ethereum', {
-                        value: originalEthereum,
-                        writable: false,
-                        configurable: true
-                    });
-                    debugLog('✅ Ethereum property restored');
-                } catch (restoreError) {
-                    debugLog('⚠️ Could not restore ethereum property', restoreError.message);
-                }
-            }
-        }
+        debugLog('🎉 Protardio Gallery initialization complete!');
         
     } catch (error) {
         debugLog('💥 Critical error in initApp', {
             errorName: error.name,
-            errorMessage: error.message,
-            errorStack: error.stack
+            errorMessage: error.message
         });
+        
+        // Ensure UI still works even if SDK fails
+        await initializeUI();
     }
-    
+}
+
+// Initialize UI components and load saved state
+async function initializeUI() {
     // Load saved state
     debugLog('📂 Loading saved state from localStorage');
     const stored = localStorage.getItem('lastProtardioView');
@@ -148,16 +68,18 @@ async function initApp() {
     }
     
     updateDebugInfo();
-    debugLog('🎉 Protardio Gallery initialization complete!');
-    
-    // MOBILE DEBUG: Final status report
-    debugLog('📱 Final mobile optimization status', {
-        sdkType: sdk !== mockSdk ? 'Real MiniApp SDK' : 'Mock SDK',
-        nativeGestures: 'Disabled for mobile stability',
-        readyCalled: 'Attempted (check logs above for success)',
-        ethereumConflicts: ethereumConflictDetected ? 'Detected and handled' : 'None detected',
-        appReady: 'Yes'
+    debugLog('🎯 UI initialization complete');
+}
+
+// Start the app initialization when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        debugLog('📄 DOM loaded, starting SDK loading');
+        loadSDK(); // This will eventually call initApp() which calls ready()
     });
+} else {
+    debugLog('📄 DOM already loaded, starting SDK loading');
+    loadSDK(); // This will eventually call initApp() which calls ready()
 }
 
 // FIXED: View random protardio - now uses TOTAL_IMAGES instead of hardcoded 1000
@@ -175,7 +97,7 @@ window.viewRandomProtardio = async function() {
     setTimeout(() => {
         try {
             // FIXED: Now uses TOTAL_IMAGES (2000) instead of hardcoded 1000
-            currentImageIndex = Math.floor(Math.random() * TOTAL_IMAGES) + 1; // +1 because files are now 1-2000
+            currentImageIndex = Math.floor(Math.random() * TOTAL_IMAGES) + 1;
             const imagePath = generateProtardioPath(currentImageIndex);
             
             console.log(`Loading Protardio #${currentImageIndex}: ${imagePath}`);
@@ -276,8 +198,3 @@ window.resetForTesting = function() {
     currentImageIndex = null;
     updateDebugInfo();
 };
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, waiting for SDK...');
-});

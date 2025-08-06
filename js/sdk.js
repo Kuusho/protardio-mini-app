@@ -99,6 +99,7 @@ async function loadSDK() {
  * 2. Adds async and defer attributes for better mobile performance
  * 3. Implements mobile-specific error handling
  * 4. Provides immediate fallback to alternative CDN
+ * 5. FIXED: Now calls ready() after SDK loads
  */
 async function loadSDKMobile() {
     console.log('📱 Loading SDK for mobile...');
@@ -112,11 +113,11 @@ async function loadSDKMobile() {
         script.async = true;  // Load asynchronously for better mobile performance
         script.defer = true;  // Defer execution until page is parsed
         
-        script.onload = () => {
+        script.onload = async () => {
             console.log('✅ Mobile SDK loaded via unpkg');
             if (window.frameSDK) {
                 sdk = window.frameSDK;
-                initApp();
+                await initApp(); // This will call ready()
             } else {
                 console.log('⚠️ frameSDK not found, trying alternative...');
                 loadSDKMobileFallback();
@@ -146,6 +147,7 @@ async function loadSDKMobile() {
  * 2. Implements mobile-specific error handling
  * 3. Provides graceful degradation to mock SDK
  * 4. Ensures app continues to function even if SDK fails
+ * 5. FIXED: Now calls ready() after SDK loads
  */
 async function loadSDKMobileFallback() {
     console.log('📱 Trying mobile fallback loading...');
@@ -157,22 +159,22 @@ async function loadSDKMobileFallback() {
         script.src = 'https://cdn.jsdelivr.net/npm/@farcaster/frame-sdk@latest/dist/index.min.js';
         script.async = true;  // Keep async for mobile performance
         
-        script.onload = () => {
+        script.onload = async () => {
             console.log('✅ Mobile fallback SDK loaded via jsDelivr');
             if (window.frameSDK) {
                 sdk = window.frameSDK;
-                initApp();
+                await initApp(); // This will call ready()
             } else {
                 console.log('⚠️ Still no SDK, using mock...');
                 sdk = mockSdk;
-                initApp();
+                await initApp(); // This will call ready()
             }
         };
         
-        script.onerror = () => {
+        script.onerror = async () => {
             console.log('⚠️ All mobile SDK loading failed, using mock...');
             sdk = mockSdk;
-            initApp();
+            await initApp(); // This will call ready()
         };
         
         document.head.appendChild(script);
@@ -194,6 +196,7 @@ async function loadSDKMobileFallback() {
  * 2. Maintains original CDN + ESM fallback strategy
  * 3. Keeps desktop-specific error handling
  * 4. Provides clear separation between mobile and desktop approaches
+ * 5. FIXED: Now calls ready() after SDK loads
  */
 async function loadSDKDesktop() {
     console.log('🖥️ Loading SDK for desktop...');
@@ -203,11 +206,11 @@ async function loadSDKDesktop() {
         // Uses original CDN approach with ESM fallback
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@farcaster/frame-sdk/dist/index.min.js';
-        script.onload = () => {
+        script.onload = async () => {
             if (window.frameSDK) {
                 sdk = window.frameSDK;
                 console.log('✅ Frame SDK loaded via CDN');
-                initApp();
+                await initApp(); // This will call ready()
             } else {
                 // Fallback to ESM import for desktop
                 loadSDKESM();
@@ -236,6 +239,7 @@ async function loadSDKDesktop() {
  * - Provides ESM import fallback for desktop environments
  * - Handles module loading in environments that support ES modules
  * - Includes timeout mechanism to prevent infinite waiting
+ * - FIXED: Now calls ready() after SDK loads
  */
 async function loadSDKESM() {
     try {
@@ -274,7 +278,7 @@ async function loadSDKESM() {
             throw new Error('ESM import failed');
         }
         
-        await initApp();
+        await initApp(); // This will call ready()
         
     } catch (error) {
         console.error('⚠️ ESM fallback failed:', error);
